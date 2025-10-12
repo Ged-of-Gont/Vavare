@@ -1,0 +1,81 @@
+:root{--gap:12px;--cs:18px;--gutter:8px;--th:24px}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  margin:16px;display:grid;gap:var(--gap)
+}
+
+/* Controls */
+.controls{display:grid;gap:8px;max-width:960px;grid-template-columns:repeat(6,minmax(0,1fr));align-items:end}
+.controls label{font-size:12px;color:#333}
+.controls>div{display:grid;gap:4px}
+button{padding:6px 10px;cursor:pointer}
+.muted{font-size:12px;color:#666}
+
+/* Main layout: 3 rows × 3 cols */
+.layout{
+  display:grid;
+  grid-template-rows: var(--cs) var(--th) auto;
+  grid-template-columns: var(--cs) auto var(--cs);
+  grid-template-areas:
+    "spacer  warpBar    warpBar"
+    "spacer2 threading  threading"
+    "weftBar canvas     treadling";
+  gap: var(--gutter);
+  align-items:start;
+  max-width:960px
+}
+.spacer{grid-area:spacer}
+.spacer2{grid-area:spacer2}
+#warpBar{grid-area:warpBar}
+#threading{grid-area:threading}
+#weftBar{grid-area:weftBar}
+#treadling{grid-area:treadling}
+#weave{grid-area:canvas}
+
+/* Color bars (circles), sized to cell size */
+.bar{display:grid;gap:0}
+.bar.warp{grid-template-columns:repeat(12,var(--cs))}
+.bar.weft{grid-template-rows:repeat(12,var(--cs))}
+.bar .cell{display:grid;place-items:center}
+.bar .cell,.bar .cell input[type=color]{width:var(--cs);height:var(--cs);border:0;padding:0;margin:0;background:transparent;appearance:none;outline:none;display:block;cursor:pointer;border-radius:50%}
+.bar .cell input[type=color]{width:calc(var(--cs) - 6px);height:calc(var(--cs) - 6px)}
+.bar .cell input[type=color]::-webkit-color-swatch-wrapper{padding:0}
+.bar .cell input[type=color]::-webkit-color-swatch{border:none;border-radius:50%}
+.bar .cell input[type=color]:focus{outline:2px solid #4c9ffe;outline-offset:2px;border-radius:50%}
+
+/* Draft strips: use exact cell tracks (FIX for alignment) */
+.draft.threading{
+  display:grid;
+  grid-template-columns:repeat(12,var(--cs)); /* was 1fr → now exact cell width */
+  height:var(--th);
+  align-items:center;gap:0
+}
+.draft.treadling{
+  display:grid;
+  grid-template-rows:repeat(12,var(--cs));   /* was 1fr → now exact cell height */
+  width:var(--cs);
+  align-items:center;gap:0
+}
+
+/* Small numeric tiles */
+.draft button{
+  all:unset;display:grid;place-items:center;
+  font:600 12px/1 system-ui,sans-serif;
+  border-radius:6px;color:#222;background:#eee;cursor:pointer;
+  height:20px;width:20px;margin:auto
+}
+.draft button:hover{background:#e2e2e2}
+.draft button:focus{outline:2px solid #4c9ffe;outline-offset:2px}
+
+/* Tie-up */
+.tieup-wrap{margin-top:10px}
+.tieup{display:grid;grid-template-columns:28px repeat(4,28px);grid-auto-rows:28px;gap:4px;align-items:center}
+.tieup .hdr,.tieup .rowhdr{font:600 12px/1 system-ui;display:grid;place-items:center;color:#333}
+.tieup label{display:grid;place-items:center}
+.tieup input[type=checkbox]{width:16px;height:16px;cursor:pointer}
+
+/* Canvas */
+canvas{display:block;border:0;outline:0;max-width:100%;height:auto}

@@ -1,4 +1,4 @@
-
+// app.js — full file with 4-shaft draft
 
 const els = {
   pattern: document.getElementById('pattern'),
@@ -16,6 +16,9 @@ const els = {
   load: document.getElementById('load'),
   warpBar: document.getElementById('warpBar'),
   weftBar: document.getElementById('weftBar'),
+  threading: document.getElementById('threading'),
+  treadling: document.getElementById('treadling'),
+  tieupWrap: document.getElementById('tieupWrap'),
 };
 
 const N = 12; // fixed 12×12
@@ -25,13 +28,23 @@ const ctx = els.canvas.getContext('2d');
 let warpColors = new Array(N);
 let weftColors = new Array(N);
 
+// 4-shaft draft state
+let threading  = Array.from({length:N}, (_,c)=> (c % 4) + 1); // 1,2,3,4 repeat
+let treadling  = Array.from({length:N}, (_,r)=> (r % 4) + 1); // 1,2,3,4 repeat
+// tieup[treadle] = Set of shafts it lifts (1..4). Default = 2/2 twill tie-up.
+let tieup = {
+  1: new Set([1,2]),
+  2: new Set([2,3]),
+  3: new Set([3,4]),
+  4: new Set([4,1]),
+};
+
 function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
 
 function getSettings() {
-  const warpCount = N;
-  const weftCount = N;
+  const warpCount = N, weftCount = N;
   const cellSize  = clamp(parseInt(els.cellSize.value, 10) || 18, 10, 40);
-  const patternType = els.pattern.value;
+  const patternType = els.pattern.value; // used for presets below
   return { warpCount, weftCount, cellSize, patternType };
 }
 
@@ -40,7 +53,7 @@ function syncCellSizeCSS(cs) {
   document.documentElement.style.setProperty('--cs', cs + 'px');
 }
 
-// Create color bars (top for warp, left for weft)
+// ===== Color bars (existing) =====
 function buildColorBars() {
   els.warpBar.innerHTML = '';
   els.weftBar.innerHTML = '';
@@ -51,11 +64,8 @@ function buildColorBars() {
     const input = document.createElement('input');
     input.type = 'color';
     input.value = warpColors[c] || '#cccccc';
-    input.title = `Warp ${c + 1}`;
-    input.addEventListener('input', () => {
-      warpColors[c] = input.value;
-      render();
-    });
+    input.title = `Warp ${c+1}`;
+    input.addEventListener('input', () => { warpColors[c] = input.value; render(); });
     wrap.appendChild(input);
     els.warpBar.appendChild(wrap);
   }
@@ -66,40 +76,125 @@ function buildColorBars() {
     const input = document.createElement('input');
     input.type = 'color';
     input.value = weftColors[r] || '#cccccc';
-    input.title = `Weft ${r + 1}`;
-    input.addEventListener('input', () => {
-      weftColors[r] = input.value;
-      render();
-    });
+    input.title = `Weft ${r+1}`;
+    input.addEventListener('input', () => { weftColors[r] = input.value; render(); });
     wrap.appendChild(input);
     els.weftBar.appendChild(wrap);
   }
 }
 
 function seedFromAB() {
-  // Use A/B alternation to fill both arrays
   const wA = els.warpA.value, wB = els.warpB.value;
   const fA = els.weftA.value, fB = els.weftB.value;
   for (let c = 0; c < N; c++) warpColors[c] = (c % 2 === 0) ? wA : wB;
   for (let r = 0; r < N; r++) weftColors[r] = (r % 2 === 0) ? fA : fB;
 }
 
-function render() {
-  // Gather current settings (pattern type, fixed 12×12, cellSize, etc.)
-  const s = getSettings();
+// ===== Draft UI =====
+// click-to-cycle helper (1..4), Shift+click cycles backward
+function cycle(v, min=1, max=4, backwards=false) {
+  return backwards ? (v - 2 + max) % max + 1 : v % max + 1;
+}
 
-  // Keep the color-bar swatches in perfect lockstep with the canvas cells
+function buildThreadingUI() {
+  els.threading.innerHTML = '';
+  for (let c = 0; c < N; c++) {
+    const b = document.createElement('button');
+    b.textContent = threading[c];
+    b.title = `Warp ${c+1}: Shaft ${threading[c]}`;
+    b.addEventListener('click', (e)=>{
+      const back = e.shiftKey;
+      threading[c] = cycle(threading[c], 1, 4, back);
+      b.textContent = threading[c];
+      b.title = `Warp ${c+1}: Shaft ${threading[c]}`;
+      render();
+    });
+    els.threading.appendChild(b);
+  }
+}
+
+function buildTreadlingUI() {
+  els.treadling.innerHTML = '';
+  for (let r = 0; r < N; r++) {
+    const b = document.createElement('button');
+    b.textContent = treadling[r];
+    b.title = `Pick ${r+1}: Treadle ${treadling[r]}`;
+    b.addEventListener('click', (e)=>{
+      const back = e.shiftKey;
+      treadling[r] = cycle(treadling[r], 1, 4, back);
+      b.textContent = treadling[r];
+      b.title = `Pick ${r+1}: Treadle ${treadling[r]}`;
+      render();
+    });
+    els.treadling.appendChild(b);
+  }
+}
+
+function wireTieupUI() {
+  // reflect current state
+  els.tieupWrap.querySelectorAll('input[type="checkbox"]').forEach(cb=>{
+    const t = +cb.dataset.t, s = +cb.dataset.s;
+    cb.checked = tieup[t].has(s);
+    cb.onchange = ()=>{
+      if (cb.checked) tieup[t].add(s); else tieup[t].delete(s);
+      render();
+    };
+  });
+}
+
+// ===== Pattern from draft =====
+function buildPatternFromDraft(rows, cols) {
+  const m = Array.from({length: rows}, ()=> Array(cols).fill(false));
+  for (let r = 0; r < rows; r++) {
+    const t = treadling[r];                 // treadle used on this pick (1..4)
+    const lifted = tieup[t];                // Set of shafts that lift
+    for (let c = 0; c < cols; c++) {
+      const shaft = threading[c];           // shaft of this warp end (1..4)
+      m[r][c] = lifted.has(shaft);          // true = warp over; false = weft over
+    }
+  }
+  return m;
+}
+
+// ===== Presets (hooked to your existing pattern select) =====
+function applyPreset(name) {
+  if (name === 'plain') {
+    // 2-shaft plain weave on 4-shaft loom
+    threading = Array.from({length:N}, (_,c)=> (c % 2) + 1); // 1,2 repeat
+    treadling = Array.from({length:N}, (_,r)=> (r % 2) + 1); // 1,2 repeat
+    tieup = { 1:new Set([1]), 2:new Set([2]), 3:new Set(), 4:new Set() };
+  } else if (name === 'twill2x2') {
+    // standard 2/2 twill
+    threading = Array.from({length:N}, (_,c)=> (c % 4) + 1); // 1,2,3,4 repeat
+    treadling = Array.from({length:N}, (_,r)=> (r % 4) + 1); // 1,2,3,4 repeat
+    tieup = {
+      1:new Set([1,2]),
+      2:new Set([2,3]),
+      3:new Set([3,4]),
+      4:new Set([4,1]),
+    };
+  }
+  buildThreadingUI();
+  buildTreadlingUI();
+  wireTieupUI();
+  render();
+}
+
+function render() {
+  const s = getSettings();
   syncCellSizeCSS(s.cellSize);
 
-  // Build the over/under pattern grid, then draw
-  const { buildPattern, drawWeave } = window.WeaveLib;
-  const pattern = buildPattern(s.patternType, s.weftCount, s.warpCount);
+  // Compute drawdown from draft
+  const pattern = buildPatternFromDraft(s.weftCount, s.warpCount);
 
-  drawWeave(ctx, {
-    ...s,
-    pattern,
-    warpColors,   // per-column colors (array of 12 hex strings)
-    weftColors    // per-row colors (array of 12 hex strings)
+  // Draw using your existing renderer
+  window.WeaveLib.drawWeave(ctx, {
+    warpCount: s.warpCount,
+    weftCount: s.weftCount,
+    cellSize:  s.cellSize,
+    warpColors,
+    weftColors,
+    pattern
   });
 }
 
@@ -119,34 +214,24 @@ function hslToHex(h, s, l) {
   return `#${toHex(f(0))}${toHex(f(8))}${toHex(f(4))}`;
 }
 
-// Wire up global A/B actions
-els.applyAB.addEventListener('click', () => {
-  seedFromAB();
-  buildColorBars();
-  render();
-});
-
+// A/B actions
+els.applyAB.addEventListener('click', () => { seedFromAB(); buildColorBars(); render(); });
 els.randomize.addEventListener('click', () => {
-  els.warpA.value = randColor();
-  els.warpB.value = randColor();
-  els.weftA.value = randColor();
-  els.weftB.value = randColor();
-  seedFromAB();
-  buildColorBars();
-  render();
+  els.warpA.value = randColor(); els.warpB.value = randColor();
+  els.weftA.value = randColor(); els.weftB.value = randColor();
+  seedFromAB(); buildColorBars(); render();
 });
 
-// Save / Load includes per-thread colors
+// Save / Load (now includes draft)
 els.save.addEventListener('click', () => {
   const data = {
-    version: 2,
+    version: 3,
     ...getSettings(),
-    warpA: els.warpA.value,
-    warpB: els.warpB.value,
-    weftA: els.weftA.value,
-    weftB: els.weftB.value,
-    warpColors,
-    weftColors
+    warpA: els.warpA.value, warpB: els.warpB.value,
+    weftA: els.weftA.value, weftB: els.weftB.value,
+    warpColors, weftColors,
+    threading, treadling,
+    tieup: Object.fromEntries(Object.entries(tieup).map(([t,set])=>[t,[...set]])),
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
@@ -157,15 +242,13 @@ els.save.addEventListener('click', () => {
 });
 
 els.load.addEventListener('change', async () => {
-  const file = els.load.files[0];
-  if (!file) return;
+  const file = els.load.files[0]; if (!file) return;
   const text = await file.text();
   try {
     const data = JSON.parse(text);
     if (data.patternType) els.pattern.value = data.patternType;
-    if (data.cellSize)    els.cellSize.value  = data.cellSize;
+    if (data.cellSize)    els.cellSize.value = data.cellSize;
 
-    // A/B and per-thread colors
     if (data.warpA) els.warpA.value = data.warpA;
     if (data.warpB) els.warpB.value = data.warpB;
     if (data.weftA) els.weftA.value = data.weftA;
@@ -174,10 +257,21 @@ els.load.addEventListener('change', async () => {
     if (Array.isArray(data.warpColors) && data.warpColors.length === N) warpColors = data.warpColors.slice();
     if (Array.isArray(data.weftColors) && data.weftColors.length === N) weftColors = data.weftColors.slice();
 
-    // Set swatch size BEFORE rebuilding bars (aligns with loaded cellSize)
-    syncCellSizeCSS(getSettings().cellSize);
+    if (Array.isArray(data.threading) && data.threading.length === N) threading = data.threading.slice();
+    if (Array.isArray(data.treadling) && data.treadling.length === N) treadling = data.treadling.slice();
 
+    if (data.tieup) {
+      tieup = { 1:new Set(), 2:new Set(), 3:new Set(), 4:new Set() };
+      Object.entries(data.tieup).forEach(([t,arr])=>{
+        arr.forEach(s=> tieup[+t].add(+s));
+      });
+    }
+
+    syncCellSizeCSS(getSettings().cellSize);
     buildColorBars();
+    buildThreadingUI();
+    buildTreadlingUI();
+    wireTieupUI();
     render();
   } catch {
     alert('Invalid JSON');
@@ -186,14 +280,18 @@ els.load.addEventListener('change', async () => {
   }
 });
 
-// React to pattern / size changes
-['change', 'input'].forEach(evt => {
-  [els.pattern, els.cellSize].forEach(el => el.addEventListener(evt, render));
-});
+// Pattern preset select
+els.pattern.addEventListener('change', ()=> applyPreset(els.pattern.value));
 
-// First run: sync sizes, seed colors, build bars, render
+// React to size changes
+['change','input'].forEach(evt => { [els.cellSize].forEach(el => el.addEventListener(evt, render)); });
+
+// First run
 const initialCS = getSettings().cellSize;
 syncCellSizeCSS(initialCS);
 seedFromAB();
 buildColorBars();
-window.addEventListener('load', render);
+buildThreadingUI();
+buildTreadlingUI();
+wireTieupUI();
+applyPreset(els.pattern.value); // sets an initial draft & renders
