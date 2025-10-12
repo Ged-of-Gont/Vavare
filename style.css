@@ -14,11 +14,12 @@ body{
 button{padding:6px 10px;cursor:pointer}
 .muted{font-size:12px;color:#666}
 
-/* Main layout: 3 rows × 3 cols */
+/* Main layout: 3 rows × 3 cols
+   Col 1 = weft bar (var(--cs)), Col 2 = canvas, Col 3 = treadling (auto width for 4 buttons) */
 .layout{
   display:grid;
   grid-template-rows: var(--cs) var(--th) auto;
-  grid-template-columns: var(--cs) auto var(--cs);
+  grid-template-columns: var(--cs) auto auto;
   grid-template-areas:
     "spacer  warpBar    warpBar"
     "spacer2 threading  threading"
@@ -46,21 +47,21 @@ button{padding:6px 10px;cursor:pointer}
 .bar .cell input[type=color]::-webkit-color-swatch{border:none;border-radius:50%}
 .bar .cell input[type=color]:focus{outline:2px solid #4c9ffe;outline-offset:2px;border-radius:50%}
 
-/* Draft strips: use exact cell tracks (FIX for alignment) */
+/* Draft strips: exact cell tracks for alignment */
 .draft.threading{
   display:grid;
-  grid-template-columns:repeat(12,var(--cs)); /* was 1fr → now exact cell width */
+  grid-template-columns:repeat(12,var(--cs));
   height:var(--th);
   align-items:center;gap:0
 }
 .draft.treadling{
   display:grid;
-  grid-template-rows:repeat(12,var(--cs));   /* was 1fr → now exact cell height */
-  width:var(--cs);
-  align-items:center;gap:0
+  grid-template-rows:repeat(12,var(--cs));
+  align-items:center;gap:0;
+  width:auto; /* allow room for 4 inline buttons */
 }
 
-/* Small numeric tiles */
+/* Small numeric tiles (used for threading and treadling buttons) */
 .draft button{
   all:unset;display:grid;place-items:center;
   font:600 12px/1 system-ui,sans-serif;
@@ -69,6 +70,16 @@ button{padding:6px 10px;cursor:pointer}
 }
 .draft button:hover{background:#e2e2e2}
 .draft button:focus{outline:2px solid #4c9ffe;outline-offset:2px}
+.draft button.on{background:#4c9ffe;color:#fff}
+
+/* Treadling: 4 inline buttons per pick row */
+.treadle-row{
+  display:flex;
+  gap:4px;
+  align-items:center;
+  justify-content:flex-start;
+  padding-left:0; /* keep left edge aligned with canvas row start */
+}
 
 /* Tie-up */
 .tieup-wrap{margin-top:10px}
