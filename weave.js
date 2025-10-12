@@ -16,24 +16,25 @@
     return m;
   }
 
+  // draw with per-thread colors (arrays)
   function drawWeave(ctx, opts) {
     const {
       warpCount, weftCount, cellSize,
-      warpA, warpB, weftA, weftB,
+      warpColors, weftColors,
       pattern
     } = opts;
 
-    // snap to integers to avoid half-pixel AA seams
     const cs = Math.max(4, Math.round(cellSize));
     const width  = warpCount * cs;
     const height = weftCount * cs;
     const dpr = window.devicePixelRatio || 1;
 
-    // main canvas @ device pixels
-    ctx.canvas.width  = Math.max(300, width) * dpr;
-    ctx.canvas.height = Math.max(300, height) * dpr;
-    ctx.canvas.style.width  = Math.max(300, width) + 'px';
-    ctx.canvas.style.height = Math.max(300, height) + 'px';
+   // canvas @ device pixels — EXACT to grid
+ctx.canvas.width  = width * dpr;
+ctx.canvas.height = height * dpr;
+ctx.canvas.style.width  = width + 'px';
+ctx.canvas.style.height = height + 'px';
+
 
     // clear bg
     ctx.save();
@@ -42,7 +43,7 @@
     ctx.fillRect(0, 0, width, height);
     ctx.restore();
 
-    // offscreen warp & weft layers
+    // offscreen layers
     const warpLayer = document.createElement('canvas');
     const weftLayer = document.createElement('canvas');
     warpLayer.width = weftLayer.width = ctx.canvas.width;
@@ -52,14 +53,12 @@
     wctx.scale(dpr, dpr);
     fctx.scale(dpr, dpr);
 
-    // yarn geometry (~90% of cell ⇒ vertex holes + colored inter-thread gaps)
+    // yarn geometry (~90% of cell)
     const yarn   = Math.min(cs * 0.9, cs);
     const radius = yarn * 0.48;
-    const bleed  = cs; // extend beyond bounds so band ends never expose bg
+    const bleed  = cs; // extend past edges so ends never show bg
 
     // helpers
-    const alt = (i, A, B) => (i % 2 === 0 ? A : B);
-
     function lighten(hex, amt) {
       const { r, g, b } = hexToRgb(hex);
       const L = x => Math.round(x + (255 - x) * amt);
@@ -92,26 +91,16 @@
       pctx.fill();
     }
     function weftFill(yCenter, color, pctx) {
-      const g = pctx.createLinearGradient(0, yCenter - yarn/2, 0, yCenter + yarn/2);
-      const hi = lighten(color, 0.14);
-      g.addColorStop(0.0, hi);
-      g.addColorStop(0.5, color);
-      g.addColorStop(1.0, hi);
-      return g;
-    }
-    function warpFill(xCenter, color, pctx) {
-      const g = pctx.createLinearGradient(xCenter - yarn/2, 0, xCenter + yarn/2, 0);
-      const hi = lighten(color, 0.14);
-      g.addColorStop(0.0, hi);
-      g.addColorStop(0.5, color);
-      g.addColorStop(1.0, hi);
-      return g;
-    }
+  return color; // solid color, no gradient
+}
 
-    // draw continuous WEFT bands (horizontal)
+   function warpFill(xCenter, color, pctx) {
+  return color; // solid color, no gradient
+}
+    // draw continuous WEFT bands with per-row colors
     for (let r = 0; r < weftCount; r++) {
       const y = r * cs + Math.floor(cs / 2);
-      const color = alt(r, weftA, weftB);
+      const color = weftColors[r] || '#cccccc';
       roundedRect(
         fctx,
         -bleed, y - yarn/2,
@@ -121,10 +110,10 @@
       );
     }
 
-    // draw continuous WARP bands (vertical)
+    // draw continuous WARP bands with per-column colors
     for (let c = 0; c < warpCount; c++) {
       const x = c * cs + Math.floor(cs / 2);
-      const color = alt(c, warpA, warpB);
+      const color = warpColors[c] || '#cccccc';
       roundedRect(
         wctx,
         x - yarn/2, -bleed,
@@ -134,11 +123,9 @@
       );
     }
 
-    // === Per-cell composition (no grid, no white seams) ===
-    // Expand crops slightly (eps) so AA never exposes background along cell borders.
-    const eps = 1.0; // try 0.75–1.25 if your screen still shows hairlines
+    // === Per-cell composition (same “under then over” trick; no grid, no white seams) ===
+    const eps = 1.0; // expanded crop to avoid AA seams
 
-    // Convert CSS px rect -> device px rect, clamped
     function toSrcRect(x, y, w, h) {
       const sx = Math.max(0, Math.floor((x) * dpr));
       const sy = Math.max(0, Math.floor((y) * dpr));
@@ -157,13 +144,13 @@
         const [sx0, sy0, sw0, sh0] = toSrcRect(dx, dy, dw, dh);
 
         if (pattern[r][c]) {
-          // warp over: draw BOTH, weft first (under), then warp (over)
-          ctx.drawImage(weftLayer, sx0, sy0, sw0, sh0, dx, dy, dw, dh);
-          ctx.drawImage(warpLayer, sx0, sy0, sw0, sh0, dx, dy, dw, dh);
+          // warp over
+          ctx.drawImage(weftLayer, sx0, sy0, sw0, sh0, dx, dy, dw, dh); // under
+          ctx.drawImage(warpLayer, sx0, sy0, sw0, sh0, dx, dy, dw, dh); // over
         } else {
-          // weft over: draw BOTH, warp first (under), then weft (over)
-          ctx.drawImage(warpLayer, sx0, sy0, sw0, sh0, dx, dy, dw, dh);
-          ctx.drawImage(weftLayer, sx0, sy0, sw0, sh0, dx, dy, dw, dh);
+          // weft over
+          ctx.drawImage(warpLayer, sx0, sy0, sw0, sh0, dx, dy, dw, dh); // under
+          ctx.drawImage(weftLayer, sx0, sy0, sw0, sh0, dx, dy, dw, dh); // over
         }
       }
     }
