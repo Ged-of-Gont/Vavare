@@ -1,9 +1,9 @@
-// app.js — 4-shaft draft + multi-treadle (single-row UI), tightened
+// app.js — dynamic counts + polished UI + multi-treadle
 
 const els = {
   pattern:    document.getElementById('pattern'),
-  warpCount:  document.getElementById('warpCount'),
-  weftCount:  document.getElementById('weftCount'),
+  warpCountI: document.getElementById('warpCount'),
+  weftCountI: document.getElementById('weftCount'),
   warpA:      document.getElementById('warpA'),
   warpB:      document.getElementById('warpB'),
   weftA:      document.getElementById('weftA'),
@@ -21,36 +21,76 @@ const els = {
   tieupWrap:  document.getElementById('tieupWrap'),
 };
 
-const N = 12;                          // fixed 12×12
+let warpCount = 12;
+let weftCount = 12;
 const ctx = els.canvas.getContext('2d');
 
-// Per-thread colors
-let warpColors = new Array(N);
-let weftColors = new Array(N);
+// Per-thread colors (dynamic)
+let warpColors = new Array(warpCount);
+let weftColors = new Array(weftCount);
 
 // Draft state (4 shafts)
-let threading = Array.from({ length: N }, (_, c) => (c % 4) + 1);
-let treadling = Array.from({ length: N }, (_, r) => new Set([(r % 4) + 1])); // multi-treadle
-let tieup = { 1: new Set([1, 2]), 2: new Set([2, 3]), 3: new Set([3, 4]), 4: new Set([4, 1]) };
+let threading = Array.from({ length: warpCount }, (_, c) => (c % 4) + 1);
+let treadling = Array.from({ length: weftCount }, (_, r) => new Set([(r % 4) + 1])); // multi
+let tieup = { 1: new Set([1,2]), 2: new Set([2,3]), 3: new Set([3,4]), 4: new Set([4,1]) };
 
 function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
 function getSettings() {
   const cellSize = clamp(parseInt(els.cellSize.value, 10) || 18, 10, 60);
-  return { warpCount: N, weftCount: N, cellSize };
+  return { warpCount, weftCount, cellSize };
 }
-function syncCellSizeCSS(px) { document.documentElement.style.setProperty('--cs', px + 'px'); }
+function syncCellSizeCSS(px) {
+  document.documentElement.style.setProperty('--cs', px + 'px');
+}
+function syncCountsCSS() {
+  document.documentElement.style.setProperty('--warp', warpCount);
+  document.documentElement.style.setProperty('--weft', weftCount);
+}
 
-// ---------- Color bars (DRY) ----------
-function buildBar(container, colors, titlePrefix, onChange) {
+// ---------- Resize draft safely (preserve existing where possible) ----------
+function resizeDraft(newWarp, newWeft) {
+  // Colors
+  const oldWarp = warpColors.slice();
+  const oldWeft = weftColors.slice();
+  warpColors = new Array(newWarp);
+  weftColors = new Array(newWeft);
+  for (let c = 0; c < newWarp; c++) {
+    warpColors[c] = oldWarp[c] ?? ((c % 2 === 0) ? els.warpA.value : els.warpB.value);
+  }
+  for (let r = 0; r < newWeft; r++) {
+    weftColors[r] = oldWeft[r] ?? ((r % 2 === 0) ? els.weftA.value : els.weftB.value);
+  }
+
+  // Threading / treadling
+  const oldThr = threading.slice();
+  threading = new Array(newWarp);
+  for (let c = 0; c < newWarp; c++) {
+    threading[c] = oldThr[c] ?? ((c % 4) + 1);
+  }
+
+  const oldTrd = treadling.slice();
+  treadling = new Array(newWeft);
+  for (let r = 0; r < newWeft; r++) {
+    treadling[r] = oldTrd[r] ? new Set(oldTrd[r]) : new Set([(r % 4) + 1]);
+  }
+
+  warpCount = newWarp;
+  weftCount = newWeft;
+  syncCountsCSS();
+}
+
+// ---------- Color bars ----------
+function buildBar(container, colors, titlePrefix) {
   container.innerHTML = '';
-  for (let i = 0; i < N; i++) {
+  const len = (titlePrefix === 'Warp') ? warpCount : weftCount;
+  for (let i = 0; i < len; i++) {
     const wrap = document.createElement('div');
     wrap.className = 'cell';
     const input = document.createElement('input');
     input.type = 'color';
     input.value = colors[i] || '#cccccc';
     input.title = `${titlePrefix} ${i + 1}`;
-    input.addEventListener('input', () => { colors[i] = input.value; scheduleRender(); onChange?.(); });
+    input.addEventListener('input', () => { colors[i] = input.value; scheduleRender(); });
     wrap.appendChild(input);
     container.appendChild(wrap);
   }
@@ -60,9 +100,8 @@ function buildColorBars() {
   buildBar(els.weftBar, weftColors, 'Weft');
 }
 function seedFromAB() {
-  const { warpA, warpB, weftA, weftB } = els;
-  for (let c = 0; c < N; c++) warpColors[c] = (c % 2 === 0) ? warpA.value : warpB.value;
-  for (let r = 0; r < N; r++) weftColors[r] = (r % 2 === 0) ? weftA.value : weftB.value;
+  for (let c = 0; c < warpCount; c++) warpColors[c] = (c % 2 === 0) ? els.warpA.value : els.warpB.value;
+  for (let r = 0; r < weftCount; r++) weftColors[r] = (r % 2 === 0) ? els.weftA.value : els.weftB.value;
 }
 
 // ---------- Draft UI ----------
@@ -71,7 +110,7 @@ function cycle(v, min = 1, max = 4, backwards = false) {
 }
 function buildThreadingUI() {
   els.threading.innerHTML = '';
-  for (let c = 0; c < N; c++) {
+  for (let c = 0; c < warpCount; c++) {
     const b = document.createElement('button');
     b.textContent = threading[c];
     b.title = `Warp ${c + 1}: Shaft ${threading[c]}`;
@@ -86,7 +125,7 @@ function buildThreadingUI() {
 }
 function buildTreadlingUI() {
   els.treadling.innerHTML = '';
-  for (let r = 0; r < N; r++) {
+  for (let r = 0; r < weftCount; r++) {
     const row = document.createElement('div');
     row.className = 'treadle-row';
     for (let t = 1; t <= 4; t++) {
@@ -125,19 +164,19 @@ function buildPatternFromDraft(rows, cols) {
 }
 
 // ---------- Presets (declarative) ----------
-const PRESET_PLAIN =        { key:'plain',        threadingSeq:[1,2],             treadlingSeq:[[1],[2]],                   tieup:{1:[1],   2:[2],   3:[],   4:[]} };
-const PRESET_TWILL_2X2 =    { key:'twill2x2',     threadingSeq:[1,2,3,4],         treadlingSeq:[[1],[2],[3],[4]],           tieup:{1:[1,2], 2:[2,3], 3:[3,4], 4:[4,1]} };
-const PRESET_BASKET_2X2 =   { key:'basket2x2',    threadingSeq:[1,1,2,2],         treadlingSeq:[[1],[1],[2],[2]],           tieup:{1:[1],   2:[2],   3:[],   4:[]} };
-const PRESET_TWILL_2_1_3S = { key:'twill2_1_3shaft', threadingSeq:[1,2,3],        treadlingSeq:[[1],[2],[3]],               tieup:{1:[1,2], 2:[2,3], 3:[3,1], 4:[]} };
-const PRESET_POINT_TWILL_4 ={ key:'pointTwill4',  threadingSeq:[1,2,3,4,3,2],     treadlingSeq:[[1],[2],[3],[4],[3],[2]],   tieup:{1:[1,2], 2:[2,3], 3:[3,4], 4:[4,1]} };
-const PRESET_BROKEN_TWILL_4={ key:'brokenTwill4', threadingSeq:[1,2,3,4],         treadlingSeq:[[1],[3],[2],[4]],           tieup:{1:[1,2], 2:[2,3], 3:[3,4], 4:[4,1]} };
-const PRESET_HERRINGBONE_4 ={ key:'herringbone4', threadingSeq:[1,2,3,4],         treadlingSeq:[[1],[2],[3],[4],[3],[2]],   tieup:{1:[1,2], 2:[2,3], 3:[3,4], 4:[4,1]} };
-const PRESET_BIRDSEYE_4 =   { key:'birdsEye4',    threadingSeq:[1,2,3,4,3,2],     treadlingSeq:[[1],[2],[3],[4],[3],[2]],   tieup:{1:[1,2], 2:[2,3], 3:[3,4], 4:[4,1]} };
-const PRESET_GOOSEEYE_4 =   { key:'gooseEye4',    threadingSeq:[1,2,3,4,4,3,2,1], treadlingSeq:[[1],[2],[3],[4],[4],[3],[2],[1]], tieup:{1:[1,2],2:[2,3],3:[3,4],4:[4,1]} };
-const PRESET_ROSEPATH_4 =   { key:'rosepath4',    threadingSeq:[1,2,3,4],         treadlingSeq:[[1],[2],[3],[4],[3],[2]],   tieup:{1:[1,3], 2:[2,4], 3:[1,2], 4:[3,4]} };
-const PRESET_MS_OS_4 =      { key:'msos4',        threadingSeq:[1,2,1,2,3,4,3,4], treadlingSeq:[[1],[2],[1],[2],[3],[4],[3],[4]], tieup:{1:[1,2],2:[2,3],3:[3,4],4:[4,1]} };
-const PRESET_HUCK_SPOT_4 =  { key:'huckSpot4',    threadingSeq:[1,2,1,2,3,4,3,4], treadlingSeq:[[1],[2],[1],[2],[3],[4],[3],[4]], tieup:{1:[1,3],2:[2,4],3:[1,2],4:[3,4]} };
-const PRESET_LOG_CABIN =    { key:'logCabin',     threadingSeq:[1,2],             treadlingSeq:[[1],[2]],                   tieup:{1:[1],   2:[2],   3:[],   4:[]} };
+const PRESET_PLAIN        = { key:'plain',        threadingSeq:[1,2],             treadlingSeq:[[1],[2]],                         tieup:{1:[1],   2:[2],   3:[],   4:[]} };
+const PRESET_TWILL_2X2    = { key:'twill2x2',     threadingSeq:[1,2,3,4],         treadlingSeq:[[1],[2],[3],[4]],                 tieup:{1:[1,2], 2:[2,3], 3:[3,4], 4:[4,1]} };
+const PRESET_BASKET_2X2   = { key:'basket2x2',    threadingSeq:[1,1,2,2],         treadlingSeq:[[1],[1],[2],[2]],                 tieup:{1:[1],   2:[2],   3:[],   4:[]} };
+const PRESET_TWILL_2_1_3S = { key:'twill2_1_3shaft', threadingSeq:[1,2,3],        treadlingSeq:[[1],[2],[3]],                     tieup:{1:[1,2], 2:[2,3], 3:[3,1], 4:[]} };
+const PRESET_POINT_TWILL_4= { key:'pointTwill4',  threadingSeq:[1,2,3,4,3,2],     treadlingSeq:[[1],[2],[3],[4],[3],[2]],         tieup:{1:[1,2], 2:[2,3], 3:[3,4], 4:[4,1]} };
+const PRESET_BROKEN_TWILL = { key:'brokenTwill4', threadingSeq:[1,2,3,4],         treadlingSeq:[[1],[3],[2],[4]],                 tieup:{1:[1,2], 2:[2,3], 3:[3,4], 4:[4,1]} };
+const PRESET_HERRINGBONE  = { key:'herringbone4', threadingSeq:[1,2,3,4],         treadlingSeq:[[1],[2],[3],[4],[3],[2]],         tieup:{1:[1,2], 2:[2,3], 3:[3,4], 4:[4,1]} };
+const PRESET_BIRDSEYE     = { key:'birdsEye4',    threadingSeq:[1,2,3,4,3,2],     treadlingSeq:[[1],[2],[3],[4],[3],[2]],         tieup:{1:[1,2], 2:[2,3], 3:[3,4], 4:[4,1]} };
+const PRESET_GOOSEEYE     = { key:'gooseEye4',    threadingSeq:[1,2,3,4,4,3,2,1], treadlingSeq:[[1],[2],[3],[4],[4],[3],[2],[1]], tieup:{1:[1,2], 2:[2,3], 3:[3,4], 4:[4,1]} };
+const PRESET_ROSEPATH     = { key:'rosepath4',    threadingSeq:[1,2,3,4],         treadlingSeq:[[1],[2],[3],[4],[3],[2]],         tieup:{1:[1,3], 2:[2,4], 3:[1,2], 4:[3,4]} };
+const PRESET_MS_OS        = { key:'msos4',        threadingSeq:[1,2,1,2,3,4,3,4], treadlingSeq:[[1],[2],[1],[2],[3],[4],[3],[4]], tieup:{1:[1,2], 2:[2,3], 3:[3,4], 4:[4,1]} };
+const PRESET_HUCK_SPOT    = { key:'huckSpot4',    threadingSeq:[1,2,1,2,3,4,3,4], treadlingSeq:[[1],[2],[1],[2],[3],[4],[3],[4]], tieup:{1:[1,3], 2:[2,4], 3:[1,2], 4:[3,4]} };
+const PRESET_LOG_CABIN    = { key:'logCabin',     threadingSeq:[1,2],             treadlingSeq:[[1],[2]],                         tieup:{1:[1],   2:[2],   3:[],   4:[]} };
 
 const PRESETS = {
   plain: PRESET_PLAIN,
@@ -145,17 +184,16 @@ const PRESETS = {
   basket2x2: PRESET_BASKET_2X2,
   twill2_1_3shaft: PRESET_TWILL_2_1_3S,
   pointTwill4: PRESET_POINT_TWILL_4,
-  brokenTwill4: PRESET_BROKEN_TWILL_4,
-  herringbone4: PRESET_HERRINGBONE_4,
-  birdsEye4: PRESET_BIRDSEYE_4,
-  gooseEye4: PRESET_GOOSEEYE_4,
-  rosepath4: PRESET_ROSEPATH_4,
-  msos4: PRESET_MS_OS_4,
-  huckSpot4: PRESET_HUCK_SPOT_4,
+  brokenTwill4: PRESET_BROKEN_TWILL,
+  herringbone4: PRESET_HERRINGBONE,
+  birdsEye4: PRESET_BIRDSEYE,
+  gooseEye4: PRESET_GOOSEEYE,
+  rosepath4: PRESET_ROSEPATH,
+  msos4: PRESET_MS_OS,
+  huckSpot4: PRESET_HUCK_SPOT,
   logCabin: PRESET_LOG_CABIN,
 };
 
-// small utility
 function repeatToLength(seq, n) {
   const out = new Array(n), L = seq.length;
   for (let i = 0; i < n; i++) out[i] = seq[i % L];
@@ -163,14 +201,19 @@ function repeatToLength(seq, n) {
 }
 function applyPreset(name) {
   const p = PRESETS[name]; if (!p) return;
-  threading = repeatToLength(p.threadingSeq, N);
-  const trSeq = repeatToLength(p.treadlingSeq, N);
+  threading = repeatToLength(p.threadingSeq, warpCount);
+  const trSeq = repeatToLength(p.treadlingSeq, weftCount);
   treadling = trSeq.map(arr => new Set(arr));
-  tieup = { 1: new Set(p.tieup[1] || []), 2: new Set(p.tieup[2] || []), 3: new Set(p.tieup[3] || []), 4: new Set(p.tieup[4] || []) };
+  tieup = {
+    1: new Set(p.tieup[1] || []),
+    2: new Set(p.tieup[2] || []),
+    3: new Set(p.tieup[3] || []),
+    4: new Set(p.tieup[4] || []),
+  };
   buildThreadingUI(); buildTreadlingUI(); wireTieupUI(); scheduleRender();
 }
 
-// ---------- Render (coalesced with rAF) ----------
+// ---------- Render (coalesced) ----------
 let rafId = null;
 function scheduleRender() {
   if (rafId) return;
@@ -190,7 +233,7 @@ function scheduleRender() {
   });
 }
 
-// ---------- Misc ----------
+// ---------- Utils ----------
 function randColor() {
   const h = Math.floor(Math.random() * 360);
   const s = 60 + Math.floor(Math.random() * 30);
@@ -215,7 +258,8 @@ els.randomize.addEventListener('click', () => {
 });
 els.save.addEventListener('click', () => {
   const data = {
-    version: 4,
+    version: 5,
+    warpCount, weftCount,
     ...getSettings(),
     warpA: els.warpA.value, warpB: els.warpB.value,
     weftA: els.weftA.value, weftB: els.weftB.value,
@@ -236,33 +280,57 @@ els.load.addEventListener('change', async () => {
   const text = await file.text();
   try {
     const data = JSON.parse(text);
+    if (Number.isInteger(data.warpCount)) warpCount = clamp(data.warpCount, 4, 64);
+    if (Number.isInteger(data.weftCount)) weftCount = clamp(data.weftCount, 4, 64);
+    els.warpCountI.value = warpCount; els.weftCountI.value = weftCount;
+    syncCountsCSS();
+    resizeDraft(warpCount, weftCount);
+
     if (data.cellSize) els.cellSize.value = data.cellSize;
     if (data.warpA) els.warpA.value = data.warpA;
     if (data.warpB) els.warpB.value = data.warpB;
     if (data.weftA) els.weftA.value = data.weftA;
     if (data.weftB) els.weftB.value = data.weftB;
-    if (Array.isArray(data.warpColors) && data.warpColors.length === N) warpColors = data.warpColors.slice();
-    if (Array.isArray(data.weftColors) && data.weftColors.length === N) weftColors = data.weftColors.slice();
-    if (Array.isArray(data.threading) && data.threading.length === N) threading = data.threading.slice();
-    if (Array.isArray(data.treadling) && data.treadling.length === N) treadling = data.treadling.map(arr => new Set(arr));
+
+    if (Array.isArray(data.warpColors) && data.warpColors.length) warpColors = data.warpColors.slice(0, warpCount);
+    if (Array.isArray(data.weftColors) && data.weftColors.length) weftColors = data.weftColors.slice(0, weftCount);
+
+    if (Array.isArray(data.threading) && data.threading.length) threading = data.threading.slice(0, warpCount);
+    if (Array.isArray(data.treadling) && data.treadling.length) {
+      treadling = data.treadling.slice(0, weftCount).map(arr => new Set(arr));
+    }
     if (data.tieup) {
-      tieup = { 1: new Set(), 2: new Set(), 3: new Set(), 4: new Set() };
+      tieup = { 1:new Set(), 2:new Set(), 3:new Set(), 4:new Set() };
       Object.entries(data.tieup).forEach(([t, arr]) => arr.forEach(s => tieup[+t].add(+s)));
     }
-    syncCellSizeCSS(getSettings().cellSize);
+
     buildColorBars(); buildThreadingUI(); buildTreadlingUI(); wireTieupUI(); scheduleRender();
   } catch {
     alert('Invalid JSON');
   } finally { els.load.value = ''; }
 });
+
+// Counts & size handlers
+function handleCountsChange() {
+  const newWarp = clamp(parseInt(els.warpCountI.value, 10) || warpCount, 4, 64);
+  const newWeft = clamp(parseInt(els.weftCountI.value, 10) || weftCount, 4, 64);
+  if (newWarp === warpCount && newWeft === weftCount) return;
+  resizeDraft(newWarp, newWeft);
+  buildColorBars(); buildThreadingUI(); buildTreadlingUI(); wireTieupUI(); scheduleRender();
+}
+['input','change'].forEach(evt => {
+  els.warpCountI.addEventListener(evt, handleCountsChange);
+  els.weftCountI.addEventListener(evt, handleCountsChange);
+  els.cellSize.addEventListener(evt, scheduleRender);
+});
 els.pattern.addEventListener('change', () => applyPreset(els.pattern.value));
-['change', 'input'].forEach(evt => els.cellSize.addEventListener(evt, scheduleRender));
 
 // ---------- First run ----------
+syncCountsCSS();
 syncCellSizeCSS(getSettings().cellSize);
 seedFromAB();
 buildColorBars();
 buildThreadingUI();
 buildTreadlingUI();
 wireTieupUI();
-applyPreset(els.pattern.value); // seeds and schedules first render
+applyPreset(els.pattern.value);

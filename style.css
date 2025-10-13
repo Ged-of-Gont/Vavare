@@ -1,21 +1,126 @@
-:root{--gap:12px;--cs:18px;--gutter:8px;--th:24px}
+:root{
+  /* Theme */
+  --bg: #0c1020;
+  --bg2: #0e1428;
+  --surface: #121a33;
+  --surface-2: #1a2446;
+  --text: #e8ecf8;
+  --muted: #a8b0c7;
+  --accent: #7aa1ff;
+  --ring: #4c9ffe;
 
-*{box-sizing:border-box}
-html,body{margin:0;padding:0}
+  /* Layout */
+  --gap: 14px;
+  --card-radius: 16px;
+  --card-shadow: 0 10px 30px rgba(0,0,0,.25);
+
+  /* Canvas grid sizing */
+  --cs: 46px;    /* cell size (synced from JS) */
+  --warp: 12;    /* column count (synced from JS) */
+  --weft: 12;    /* row count (synced from JS) */
+
+  /* Draft strip heights */
+  --th: 26px;    /* threading strip height */
+}
+
+*{ box-sizing:border-box }
+html,body{ margin:0; padding:0 }
+
 body{
-  font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
-  margin:16px;display:grid;gap:var(--gap)
+  min-height:100svh;
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(1200px 600px at 20% -10%, #1b2350 0%, transparent 60%),
+    radial-gradient(1000px 800px at 120% 0%, #182040 0%, transparent 60%),
+    linear-gradient(180deg, var(--bg), var(--bg2));
+  display:grid;
+  gap:24px;
+  padding: 28px;
+}
+
+.page-header{
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.brand{
+  margin:0 0 6px;
+  font-family: Fraunces, serif;
+  font-size: clamp(28px, 3.2vw, 40px);
+  font-weight: 600;
+  letter-spacing: .3px;
+}
+.brand span{ color: var(--accent); }
+.tagline{
+  margin:0;
+  color: var(--muted);
+  letter-spacing: .2px;
+}
+
+.card{
+  max-width: 1100px;
+  margin: 0 auto;
+  background: linear-gradient(180deg, var(--surface), var(--surface-2));
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  padding: 16px;
+  border: 1px solid rgba(255,255,255,.06);
 }
 
 /* Controls */
-.controls{display:grid;gap:8px;max-width:960px;grid-template-columns:repeat(6,minmax(0,1fr));align-items:end}
-.controls label{font-size:12px;color:#333}
-.controls>div{display:grid;gap:4px}
-button{padding:6px 10px;cursor:pointer}
-.muted{font-size:12px;color:#666}
+.controls{
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 12px 14px;
+  align-items: end;
+}
+.field{ display:grid; gap:6px; }
+label{ font-size:12px; color: var(--muted); }
 
-/* Main layout: 3 rows × 3 cols
-   Col 1 = weft bar (var(--cs)), Col 2 = canvas, Col 3 = treadling (auto width for 4 buttons) */
+select, input[type="number"], input[type="color"]{
+  width: 100%;
+  background: #0f1730;
+  color: var(--text);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 10px;
+  padding: 8px 10px;
+  outline: none;
+}
+input[type="number"]{ text-align: center; }
+input[type="color"]{ padding:0; height: 36px; }
+
+.actions{
+  grid-column: 1 / -1;
+  display:flex; gap:10px; flex-wrap: wrap;
+  margin-top: 4px;
+}
+.btn{
+  appearance: none;
+  border: 1px solid rgba(255,255,255,.12);
+  background: #0f1730;
+  color: var(--text);
+  padding: 9px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: transform .06s ease, background .2s ease, border-color .2s ease;
+}
+.btn:hover{ background:#111c3b; }
+.btn:active{ transform: translateY(1px); }
+.btn.ghost{
+  background: transparent;
+  border-color: rgba(255,255,255,.18);
+}
+.btn.file{
+  position: relative;
+  overflow: hidden;
+}
+.btn.file input[type="file"]{
+  position:absolute; inset:0; opacity:0; cursor:pointer;
+}
+
+/* Canvas card + layout */
+.canvas-card{ padding: 18px; }
+
 .layout{
   display:grid;
   grid-template-rows: var(--cs) var(--th) auto;
@@ -24,69 +129,92 @@ button{padding:6px 10px;cursor:pointer}
     "spacer  warpBar    warpBar"
     "spacer2 threading  threading"
     "weftBar canvas     treadling";
-  gap: var(--gutter);
+  gap: 14px;
   align-items:start;
-  max-width:960px
 }
-.spacer{grid-area:spacer}
-.spacer2{grid-area:spacer2}
-#warpBar{grid-area:warpBar}
-#threading{grid-area:threading}
-#weftBar{grid-area:weftBar}
-#treadling{grid-area:treadling}
-#weave{grid-area:canvas}
 
-/* Color bars (circles), sized to cell size */
-.bar{display:grid;gap:0}
-.bar.warp{grid-template-columns:repeat(12,var(--cs))}
-.bar.weft{grid-template-rows:repeat(12,var(--cs))}
-.bar .cell{display:grid;place-items:center}
-.bar .cell,.bar .cell input[type=color]{width:var(--cs);height:var(--cs);border:0;padding:0;margin:0;background:transparent;appearance:none;outline:none;display:block;cursor:pointer;border-radius:50%}
-.bar .cell input[type=color]{width:calc(var(--cs) - 6px);height:calc(var(--cs) - 6px)}
-.bar .cell input[type=color]::-webkit-color-swatch-wrapper{padding:0}
-.bar .cell input[type=color]::-webkit-color-swatch{border:none;border-radius:50%}
-.bar .cell input[type=color]:focus{outline:2px solid #4c9ffe;outline-offset:2px;border-radius:50%}
+.spacer{ grid-area:spacer }
+.spacer2{ grid-area:spacer2 }
+#warpBar{ grid-area:warpBar }
+#threading{ grid-area:threading }
+#weftBar{ grid-area:weftBar }
+#treadling{ grid-area:treadling }
+#weave{ grid-area:canvas }
 
-/* Draft strips: exact cell tracks for alignment */
+/* Color bars */
+.bar{ display:grid; gap:0; }
+.bar.warp{ grid-template-columns: repeat(var(--warp), var(--cs)); }
+.bar.weft{ grid-template-rows:    repeat(var(--weft), var(--cs)); }
+
+.bar .cell{ display:grid; place-items:center; }
+.bar .cell, .bar .cell input[type="color"]{
+  width: var(--cs); height: var(--cs);
+  border:0; padding:0; margin:0; background:transparent; outline:none; display:block;
+  border-radius: 50%;
+}
+.bar .cell input[type="color"]{
+  width: calc(var(--cs) - 6px); height: calc(var(--cs) - 6px);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.15);
+  border-radius: 50%;
+}
+.bar .cell input[type="color"]::-webkit-color-swatch-wrapper{ padding:0 }
+.bar .cell input[type="color"]::-webkit-color-swatch{ border:none; border-radius: 50% }
+.bar .cell input[type="color"]:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
+
+/* Draft strips — exact cell tracks */
 .draft.threading{
-  display:grid;
-  grid-template-columns:repeat(12,var(--cs));
-  height:var(--th);
-  align-items:center;gap:0
+  display:grid; grid-template-columns: repeat(var(--warp), var(--cs));
+  height: var(--th); align-items:center; gap:0;
 }
 .draft.treadling{
-  display:grid;
-  grid-template-rows:repeat(12,var(--cs));
-  align-items:center;gap:0;
-  width:auto; /* allow room for 4 inline buttons */
+  display:grid; grid-template-rows: repeat(var(--weft), var(--cs));
+  align-items:center; gap:0;
 }
 
-/* Small numeric tiles (used for threading and treadling buttons) */
+/* Draft buttons */
 .draft button{
-  all:unset;display:grid;place-items:center;
-  font:600 12px/1 system-ui,sans-serif;
-  border-radius:6px;color:#222;background:#eee;cursor:pointer;
-  height:20px;width:20px;margin:auto
+  all:unset; display:grid; place-items:center;
+  font: 600 12px/1 Inter, system-ui, sans-serif;
+  color: #dde6ff; background: #0f1730;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 8px; cursor: pointer;
+  height: 22px; width: 22px; margin: auto;
+  transition: background .15s ease, color .15s ease, border-color .15s ease;
 }
-.draft button:hover{background:#e2e2e2}
-.draft button:focus{outline:2px solid #4c9ffe;outline-offset:2px}
-.draft button.on{background:#4c9ffe;color:#fff}
+.draft button:hover{ background:#111c3b; }
+.draft button:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
+.draft button.on{ background: var(--accent); color:#07122b; border-color: transparent; }
 
-/* Treadling: 4 inline buttons per pick row */
+/* Treadling: 4 inline buttons per pick */
 .treadle-row{
-  display:flex;
-  gap:4px;
-  align-items:center;
-  justify-content:flex-start;
-  padding-left:0; /* keep left edge aligned with canvas row start */
+  display:flex; gap:6px; align-items:center; justify-content:flex-start;
 }
 
 /* Tie-up */
-.tieup-wrap{margin-top:10px}
-.tieup{display:grid;grid-template-columns:28px repeat(4,28px);grid-auto-rows:28px;gap:4px;align-items:center}
-.tieup .hdr,.tieup .rowhdr{font:600 12px/1 system-ui;display:grid;place-items:center;color:#333}
-.tieup label{display:grid;place-items:center}
-.tieup input[type=checkbox]{width:16px;height:16px;cursor:pointer}
+.tieup-wrap{ margin-top: 16px; }
+.tieup{
+  display:grid; grid-template-columns: 28px repeat(4, 28px);
+  grid-auto-rows: 28px; gap: 6px; align-items:center;
+}
+.tieup .hdr, .tieup .rowhdr{
+  font: 600 12px/1 Inter, system-ui; display:grid; place-items:center; color: var(--muted);
+}
+.tieup label{ display:grid; place-items:center; }
+.tieup input[type="checkbox"]{ width:16px; height:16px; cursor:pointer; }
 
 /* Canvas */
-canvas{display:block;border:0;outline:0;max-width:100%;height:auto}
+canvas{
+  display:block;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.08);
+  background: #0a1126;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.02);
+  max-width: 100%;
+  height: auto;
+}
+
+/* Footer */
+.footer{
+  max-width: 1100px; margin: 0 auto; color: var(--muted); font-size: 12px;
+  opacity: .9;
+}
