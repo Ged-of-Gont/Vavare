@@ -1,3 +1,5 @@
+// weave.js 
+
 (function () {
   // pattern[r][c] === true  => warp over; false => weft over
   function buildPattern(patternType, rows, cols) {
@@ -39,8 +41,6 @@ ctx.canvas.style.height = height + 'px';
     // clear bg
     ctx.save();
     ctx.scale(dpr, dpr);
-    ctx.fillStyle = '#f7f7f7';
-    ctx.fillRect(0, 0, width, height);
     ctx.restore();
 
     // offscreen layers

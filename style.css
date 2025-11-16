@@ -1,220 +1,413 @@
-:root{
-  /* Theme */
-  --bg: #0c1020;
-  --bg2: #0e1428;
-  --surface: #121a33;
-  --surface-2: #1a2446;
-  --text: #e8ecf8;
-  --muted: #a8b0c7;
-  --accent: #7aa1ff;
-  --ring: #4c9ffe;
+:root {
+  /* Core palette */
+  --bg: #031b15;
+  --panel: #c7f5b3;
+  --fg: #ff21b9;
+  --line: #67cf1d;
+  --accent: #ffea00;
 
-  /* Layout */
-  --gap: 14px;
-  --card-radius: 16px;
-  --card-shadow: 0 10px 30px rgba(0,0,0,.25);
+  /* Yarn defaults used by JS */
+  --warp-a: #a24ecf;
+  --warp-b: #6620a0;
+  --weft-a: #eeb218;
+  --weft-b: #c5730e;
 
-  /* Canvas grid sizing */
-  --cs: 46px;    /* cell size (synced from JS) */
-  --warp: 12;    /* column count (synced from JS) */
-  --weft: 12;    /* row count (synced from JS) */
+  /* Loom grid (synced from JS) */
+  --cs: 46px;
+  --warp: 12;
+  --weft: 12;
+  --th: 24px;
 
-  /* Draft strip heights */
-  --th: 26px;    /* threading strip height */
+  --app-max-width: clamp(350px, 80vw, 1000px);
+  --ui-font: 'Share Tech Mono', system-ui, monospace;
 }
 
-*{ box-sizing:border-box }
-html,body{ margin:0; padding:0 }
-
-body{
-  min-height:100svh;
-  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-  color: var(--text);
-  background:
-    radial-gradient(1200px 600px at 20% -10%, #1b2350 0%, transparent 60%),
-    radial-gradient(1000px 800px at 120% 0%, #182040 0%, transparent 60%),
-    linear-gradient(180deg, var(--bg), var(--bg2));
-  display:grid;
-  gap:24px;
-  padding: 28px;
+/* RESET */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
-.page-header{
-  max-width: 1100px;
-  margin: 0 auto;
+html,
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--ui-font);
 }
-.brand{
-  margin:0 0 6px;
-  font-family: Fraunces, serif;
-  font-size: clamp(28px, 3.2vw, 40px);
+
+/* BASE */
+body {
+  background: var(--bg);
+  color: var(--fg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  min-height: 100svh;
+  font-size: 20px;
   font-weight: 600;
-  letter-spacing: .3px;
-}
-.brand span{ color: var(--accent); }
-.tagline{
-  margin:0;
-  color: var(--muted);
-  letter-spacing: .2px;
 }
 
-.card{
-  max-width: 1100px;
-  margin: 0 auto;
-  background: linear-gradient(180deg, var(--surface), var(--surface-2));
-  border-radius: var(--card-radius);
-  box-shadow: var(--card-shadow);
-  padding: 16px;
-  border: 1px solid rgba(255,255,255,.06);
-}
-
-/* Controls */
-.controls{
-  display: grid;
-  grid-template-columns: repeat(8, minmax(0, 1fr));
-  gap: 12px 14px;
-  align-items: end;
-}
-.field{ display:grid; gap:6px; }
-label{ font-size:12px; color: var(--muted); }
-
-select, input[type="number"], input[type="color"]{
+/* HEADER */
+.page-header {
+  max-width: var(--app-max-width);
   width: 100%;
-  background: #0f1730;
-  color: var(--text);
-  border: 1px solid rgba(255,255,255,.08);
-  border-radius: 10px;
-  padding: 8px 10px;
+  margin-bottom: 12px;
+}
+
+.brand {
+  margin: 0 0 4px;
+  font-size: clamp(28px, 4vw, 40px);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--line);
+}
+
+.tagline {
+  margin: 0;
+  color: var(--fg);
+  font-size: 0.9rem;
+}
+
+/* GENERIC ROW CONTAINER */
+.card {
+  width: 100%;
+  max-width: var(--app-max-width);
+  margin: 0 auto 8px auto;
+  background: var(--bg);
+}
+
+/* =================== CONTROLS =================== */
+
+/* 4 equal columns; rows auto-fill, all full-width */
+.controls .controls-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px 16px;
+}
+
+/* One “block” in the grid */
+.control-unit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  background: var(--panel);
+  border: 7px solid var(--panel);
+  padding: 0.4rem;
+  text-transform: uppercase;
+  font-size: 0.9rem;
+  color: var(--fg);
+}
+
+.control-unit label {
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+}
+
+/* Make all form controls share font + weight */
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  font-weight: 500;
+}
+
+/* Shared box model for pattern select + numbers */
+.control-unit select,
+.control-unit input[type="number"] {
+  appearance: none;
+  background-color: var(--line);
+  color: #000;
+  font-size: 1rem;
+  text-transform: uppercase;
+  border-top: 4px solid var(--bg);
+  border-left: 4px solid var(--bg);
+  border-bottom: 4px solid var(--fg);
+  border-right: 4px solid var(--fg);
+  min-height: 2.4rem;
+  padding: 0.3rem 0.6rem;
+  line-height: 1;
   outline: none;
 }
-input[type="number"]{ text-align: center; }
-input[type="color"]{ padding:0; height: 36px; }
 
-.actions{
-  grid-column: 1 / -1;
-  display:flex; gap:10px; flex-wrap: wrap;
-  margin-top: 4px;
+/* Top-panel color pickers (long blocks like original) */
+.control-unit--colors .color-row {
+  display: flex;
+  gap: 8px;
 }
-.btn{
-  appearance: none;
-  border: 1px solid rgba(255,255,255,.12);
-  background: #0f1730;
-  color: var(--text);
-  padding: 9px 14px;
-  border-radius: 999px;
+
+.control-unit--colors input[type="color"] {
+  flex: 1 1 0;
+  min-width: 0;
+  background-color: var(--line);
+  border-top: 4px solid var(--bg);
+  border-left: 4px solid var(--bg);
+  border-bottom: 4px solid var(--fg);
+  border-right: 4px solid var(--fg);
+  height: 2.4rem;
+  padding: 0;
   cursor: pointer;
-  transition: transform .06s ease, background .2s ease, border-color .2s ease;
 }
-.btn:hover{ background:#111c3b; }
-.btn:active{ transform: translateY(1px); }
-.btn.ghost{
-  background: transparent;
-  border-color: rgba(255,255,255,.18);
+
+.control-unit--colors input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
 }
-.btn.file{
+.control-unit--colors input[type="color"]::-webkit-color-swatch {
+  border: none;
+}
+
+/* ACTION BUTTON BLOCKS (row 2 right side) */
+.control-unit--btn {
+  gap: 0.4rem;
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel);
+  color: var(--bg);
+  padding: 0.5rem 0.9rem;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-top: 4px solid var(--fg);
+  border-left: 4px solid var(--fg);
+  border-bottom: 4px solid var(--line);
+  border-right: 4px solid var(--line);
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.btn:hover {
+  background: var(--line);
+  color: var(--panel);
+}
+
+.btn:active {
+  transform: translateY(1px);
+  color: var(--fg);
+  background: var(--bg);
+  
+}
+
+.btn.file {
   position: relative;
-  overflow: hidden;
-}
-.btn.file input[type="file"]{
-  position:absolute; inset:0; opacity:0; cursor:pointer;
 }
 
-/* Canvas card + layout */
-.canvas-card{ padding: 18px; }
+.btn.file input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
 
-.layout{
-  display:grid;
+/* =================== LOOM / CANVAS =================== */
+
+.canvas-card {
+  width: 100%;
+  max-width: var(--app-max-width);
+  overflow-x: auto;
+  padding-top: 1rem;
+}
+
+/* assembly = whole machine (bars + canvas + right controls + tie-up) */
+.assembly {
+  display: inline-block;
+  width: max-content;
+  transform-origin: top center;
+}
+
+/* inner layout grid */
+.layout {
+  display: grid;
   grid-template-rows: var(--cs) var(--th) auto;
   grid-template-columns: var(--cs) auto auto;
   grid-template-areas:
     "spacer  warpBar    warpBar"
     "spacer2 threading  threading"
     "weftBar canvas     treadling";
-  gap: 14px;
-  align-items:start;
+  gap: 10px;
 }
 
-.spacer{ grid-area:spacer }
-.spacer2{ grid-area:spacer2 }
-#warpBar{ grid-area:warpBar }
-#threading{ grid-area:threading }
-#weftBar{ grid-area:weftBar }
-#treadling{ grid-area:treadling }
-#weave{ grid-area:canvas }
+.spacer { grid-area: spacer; }
+.spacer2 { grid-area: spacer2; }
+#warpBar { grid-area: warpBar; }
+#threading { grid-area: threading; }
+#weftBar { grid-area: weftBar; }
+#treadling { grid-area: treadling; }
+#weave { grid-area: canvas; }
 
-/* Color bars */
-.bar{ display:grid; gap:0; }
-.bar.warp{ grid-template-columns: repeat(var(--warp), var(--cs)); }
-.bar.weft{ grid-template-rows:    repeat(var(--weft), var(--cs)); }
-
-.bar .cell{ display:grid; place-items:center; }
-.bar .cell, .bar .cell input[type="color"]{
-  width: var(--cs); height: var(--cs);
-  border:0; padding:0; margin:0; background:transparent; outline:none; display:block;
-  border-radius: 50%;
+/* COLOR BARS (top + left hex buttons) */
+.bar {
+  display: grid;
+  gap: 0;
 }
-.bar .cell input[type="color"]{
-  width: calc(var(--cs) - 6px); height: calc(var(--cs) - 6px);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.15);
-  border-radius: 50%;
+.bar.warp {
+  grid-template-columns: repeat(var(--warp), var(--cs));
 }
-.bar .cell input[type="color"]::-webkit-color-swatch-wrapper{ padding:0 }
-.bar .cell input[type="color"]::-webkit-color-swatch{ border:none; border-radius: 50% }
-.bar .cell input[type="color"]:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
-
-/* Draft strips — exact cell tracks */
-.draft.threading{
-  display:grid; grid-template-columns: repeat(var(--warp), var(--cs));
-  height: var(--th); align-items:center; gap:0;
+.bar.weft {
+  grid-template-rows: repeat(var(--weft), var(--cs));
 }
-.draft.treadling{
-  display:grid; grid-template-rows: repeat(var(--weft), var(--cs));
-  align-items:center; gap:0;
+.bar .cell {
+  width: var(--cs);
+  height: var(--cs);
+  display: grid;
+  place-items: center;
 }
 
-/* Draft buttons */
-.draft button{
-  all:unset; display:grid; place-items:center;
-  font: 600 12px/1 Inter, system-ui, sans-serif;
-  color: #dde6ff; background: #0f1730;
-  border: 1px solid rgba(255,255,255,.12);
-  border-radius: 8px; cursor: pointer;
-  height: 22px; width: 22px; margin: auto;
-  transition: background .15s ease, color .15s ease, border-color .15s ease;
+/* filled hex pickers (no inner square) */
+.bar .cell input[type="color"] {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  clip-path: polygon(
+    25% 0%,
+    75% 0%,
+    100% 50%,
+    75% 100%,
+    25% 100%,
+    0% 50%
+  );
 }
-.draft button:hover{ background:#111c3b; }
-.draft button:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
-.draft button.on{ background: var(--accent); color:#07122b; border-color: transparent; }
-
-/* Treadling: 4 inline buttons per pick */
-.treadle-row{
-  display:flex; gap:6px; align-items:center; justify-content:flex-start;
+.bar .cell input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
 }
-
-/* Tie-up */
-.tieup-wrap{ margin-top: 16px; }
-.tieup{
-  display:grid; grid-template-columns: 28px repeat(4, 28px);
-  grid-auto-rows: 28px; gap: 6px; align-items:center;
-}
-.tieup .hdr, .tieup .rowhdr{
-  font: 600 12px/1 Inter, system-ui; display:grid; place-items:center; color: var(--muted);
-}
-.tieup label{ display:grid; place-items:center; }
-.tieup input[type="checkbox"]{ width:16px; height:16px; cursor:pointer; }
-
-/* Canvas */
-canvas{
-  display:block;
-  border-radius: 12px;
-  border: 1px solid rgba(255,255,255,.08);
-  background: #0a1126;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.02);
-  max-width: 100%;
-  height: auto;
+.bar .cell input[type="color"]::-webkit-color-swatch {
+  border: none;
 }
 
-/* Footer */
-.footer{
-  max-width: 1100px; margin: 0 auto; color: var(--muted); font-size: 12px;
-  opacity: .9;
+/* DRAFT STRIPS */
+.draft.threading {
+  display: grid;
+  grid-template-columns: repeat(var(--warp), var(--cs));
+  height: var(--th);
+  align-items: center;
+}
+.draft.treadling {
+  display: grid;
+  grid-template-rows: repeat(var(--weft), var(--cs));
+  align-items: center;
+}
+
+/* Threading / treadling buttons */
+.draft button {
+  all: unset;
+  display: grid;
+  place-items: center;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--fg);
+  background: var(--panel);
+  border-top: 3px solid var(--bg);
+  border-left: 3px solid var(--bg);
+  border-bottom: 3px solid var(--fg);
+  border-right: 3px solid var(--fg);
+  cursor: pointer;
+  width: 24px;
+  height: 24px;
+  margin: auto;
+}
+
+.draft button.on {
+  background: var(--line);
+  color: var(--bg);
+}
+
+.treadle-row {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+/* TIE-UP MATRIX */
+.tieup-wrap {
+  margin-top: 16px;
+}
+
+.tieup {
+  display: grid;
+  grid-template-columns: 32px repeat(4, 28px);
+  grid-auto-rows: 26px;
+  gap: 6px;
+  align-items: center;
+}
+
+.tieup .hdr,
+.tieup .rowhdr {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  color: var(--fg);
+  display: grid;
+  place-items: center;
+}
+
+.tieup label {
+  display: grid;
+  place-items: center;
+}
+
+/* Checkboxes styled like mini pixels */
+.tieup input[type="checkbox"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  background: var(--panel);
+  border-top: 3px solid var(--bg);
+  border-left: 3px solid var(--bg);
+  border-bottom: 3px solid var(--fg);
+  border-right: 3px solid var(--fg);
+}
+
+.tieup input[type="checkbox"]:checked {
+  background: var(--line);
+}
+
+/* CANVAS */
+canvas {
+  display: block;
+  background: var(--bg);
+}
+
+/* FOOTER */
+.footer {
+  max-width: var(--app-max-width);
+  width: 100%;
+  margin: 1rem auto 0;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  color: var(--fg);
+}
+
+/* Make Save JSON and Load JSON text truly identical */
+.btn,
+.btn.file,
+label.btn {
+  font-family: var(--ui-font);
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1; /* keeps vertical centering consistent */
+}
+
+
+/* Chrome / Edge / Safari, etc. */
+input[type="number"]::selection {
+  background: var(--accent); /* or any bright color */
+  color: #000;               /* text color while selected */
+}
+
+/* Firefox */
+input[type="number"]::-moz-selection {
+  background: var(--accent);
+  color: #000;
 }

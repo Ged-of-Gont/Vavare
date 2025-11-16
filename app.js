@@ -21,6 +21,24 @@ const els = {
   tieupWrap:  document.getElementById('tieupWrap'),
 };
 
+function getCSSVar(name) {
+  return getComputedStyle(document.documentElement)
+    .getPropertyValue(name)
+    .trim();
+}
+
+function initDefaultColorsFromCSS() {
+  const warpA = getCSSVar('--warp-a');
+  const warpB = getCSSVar('--warp-b');
+  const weftA = getCSSVar('--weft-a');
+  const weftB = getCSSVar('--weft-b');
+
+  if (warpA) els.warpA.value = warpA;
+  if (warpB) els.warpB.value = warpB;
+  if (weftA) els.weftA.value = weftA;
+  if (weftB) els.weftB.value = weftB;
+}
+
 let warpCount = 12;
 let weftCount = 12;
 const ctx = els.canvas.getContext('2d');
@@ -35,13 +53,16 @@ let treadling = Array.from({ length: weftCount }, (_, r) => new Set([(r % 4) + 1
 let tieup = { 1: new Set([1,2]), 2: new Set([2,3]), 3: new Set([3,4]), 4: new Set([4,1]) };
 
 function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
+
 function getSettings() {
   const cellSize = clamp(parseInt(els.cellSize.value, 10) || 18, 10, 60);
   return { warpCount, weftCount, cellSize };
 }
+
 function syncCellSizeCSS(px) {
   document.documentElement.style.setProperty('--cs', px + 'px');
 }
+
 function syncCountsCSS() {
   document.documentElement.style.setProperty('--warp', warpCount);
   document.documentElement.style.setProperty('--weft', weftCount);
@@ -90,15 +111,20 @@ function buildBar(container, colors, titlePrefix) {
     input.type = 'color';
     input.value = colors[i] || '#cccccc';
     input.title = `${titlePrefix} ${i + 1}`;
-    input.addEventListener('input', () => { colors[i] = input.value; scheduleRender(); });
+    input.addEventListener('input', () => {
+      colors[i] = input.value;
+      scheduleRender();
+    });
     wrap.appendChild(input);
     container.appendChild(wrap);
   }
 }
+
 function buildColorBars() {
   buildBar(els.warpBar, warpColors, 'Warp');
   buildBar(els.weftBar, weftColors, 'Weft');
 }
+
 function seedFromAB() {
   for (let c = 0; c < warpCount; c++) warpColors[c] = (c % 2 === 0) ? els.warpA.value : els.warpB.value;
   for (let r = 0; r < weftCount; r++) weftColors[r] = (r % 2 === 0) ? els.weftA.value : els.weftB.value;
@@ -108,6 +134,7 @@ function seedFromAB() {
 function cycle(v, min = 1, max = 4, backwards = false) {
   return backwards ? (v - 2 + max) % max + 1 : (v % max) + 1;
 }
+
 function buildThreadingUI() {
   els.threading.innerHTML = '';
   for (let c = 0; c < warpCount; c++) {
@@ -123,6 +150,7 @@ function buildThreadingUI() {
     els.threading.appendChild(b);
   }
 }
+
 function buildTreadlingUI() {
   els.treadling.innerHTML = '';
   for (let r = 0; r < weftCount; r++) {
@@ -134,7 +162,8 @@ function buildTreadlingUI() {
       b.title = `Pick ${r + 1}: Toggle treadle ${t}`;
       if (treadling[r].has(t)) b.classList.add('on');
       b.addEventListener('click', () => {
-        if (treadling[r].has(t)) treadling[r].delete(t); else treadling[r].add(t);
+        if (treadling[r].has(t)) treadling[r].delete(t);
+        else treadling[r].add(t);
         if (treadling[r].size === 0) treadling[r].add(t); // keep at least one
         b.classList.toggle('on', treadling[r].has(t));
         scheduleRender();
@@ -144,11 +173,15 @@ function buildTreadlingUI() {
     els.treadling.appendChild(row);
   }
 }
+
 function wireTieupUI() {
   els.tieupWrap.querySelectorAll('input[type="checkbox"]').forEach(cb => {
     const t = +cb.dataset.t, s = +cb.dataset.s;
     cb.checked = tieup[t].has(s);
-    cb.onchange = () => { cb.checked ? tieup[t].add(s) : tieup[t].delete(s); scheduleRender(); };
+    cb.onchange = () => {
+      cb.checked ? tieup[t].add(s) : tieup[t].delete(s);
+      scheduleRender();
+    };
   });
 }
 
@@ -199,8 +232,10 @@ function repeatToLength(seq, n) {
   for (let i = 0; i < n; i++) out[i] = seq[i % L];
   return out;
 }
+
 function applyPreset(name) {
-  const p = PRESETS[name]; if (!p) return;
+  const p = PRESETS[name];
+  if (!p) return;
   threading = repeatToLength(p.threadingSeq, warpCount);
   const trSeq = repeatToLength(p.treadlingSeq, weftCount);
   treadling = trSeq.map(arr => new Set(arr));
@@ -210,7 +245,10 @@ function applyPreset(name) {
     3: new Set(p.tieup[3] || []),
     4: new Set(p.tieup[4] || []),
   };
-  buildThreadingUI(); buildTreadlingUI(); wireTieupUI(); scheduleRender();
+  buildThreadingUI();
+  buildTreadlingUI();
+  wireTieupUI();
+  scheduleRender();
 }
 
 // ---------- Render (coalesced) ----------
@@ -240,6 +278,7 @@ function randColor() {
   const l = 55 + Math.floor(Math.random() * 20);
   return hslToHex(h, s, l);
 }
+
 function hslToHex(h, s, l) {
   s /= 100; l /= 100;
   const k = n => (n + h / 30) % 12;
@@ -250,12 +289,22 @@ function hslToHex(h, s, l) {
 }
 
 // ---------- Events ----------
-els.applyAB.addEventListener('click', () => { seedFromAB(); buildColorBars(); scheduleRender(); });
-els.randomize.addEventListener('click', () => {
-  els.warpA.value = randColor(); els.warpB.value = randColor();
-  els.weftA.value = randColor(); els.weftB.value = randColor();
-  seedFromAB(); buildColorBars(); scheduleRender();
+els.applyAB.addEventListener('click', () => {
+  seedFromAB();
+  buildColorBars();
+  scheduleRender();
 });
+
+els.randomize.addEventListener('click', () => {
+  els.warpA.value = randColor();
+  els.warpB.value = randColor();
+  els.weftA.value = randColor();
+  els.weftB.value = randColor();
+  seedFromAB();
+  buildColorBars();
+  scheduleRender();
+});
+
 els.save.addEventListener('click', () => {
   const data = {
     version: 5,
@@ -266,7 +315,9 @@ els.save.addEventListener('click', () => {
     warpColors, weftColors,
     threading,
     treadling: treadling.map(set => [...set]),
-    tieup: Object.fromEntries(Object.entries(tieup).map(([t, set]) => [t, [...set]])),
+    tieup: Object.fromEntries(
+      Object.entries(tieup).map(([t, set]) => [t, [...set]])
+    ),
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
@@ -275,14 +326,17 @@ els.save.addEventListener('click', () => {
   a.click();
   URL.revokeObjectURL(a.href);
 });
+
 els.load.addEventListener('change', async () => {
-  const file = els.load.files[0]; if (!file) return;
+  const file = els.load.files[0];
+  if (!file) return;
   const text = await file.text();
   try {
     const data = JSON.parse(text);
     if (Number.isInteger(data.warpCount)) warpCount = clamp(data.warpCount, 4, 64);
     if (Number.isInteger(data.weftCount)) weftCount = clamp(data.weftCount, 4, 64);
-    els.warpCountI.value = warpCount; els.weftCountI.value = weftCount;
+    els.warpCountI.value = warpCount;
+    els.weftCountI.value = weftCount;
     syncCountsCSS();
     resizeDraft(warpCount, weftCount);
 
@@ -292,22 +346,36 @@ els.load.addEventListener('change', async () => {
     if (data.weftA) els.weftA.value = data.weftA;
     if (data.weftB) els.weftB.value = data.weftB;
 
-    if (Array.isArray(data.warpColors) && data.warpColors.length) warpColors = data.warpColors.slice(0, warpCount);
-    if (Array.isArray(data.weftColors) && data.weftColors.length) weftColors = data.weftColors.slice(0, weftCount);
+    if (Array.isArray(data.warpColors) && data.warpColors.length) {
+      warpColors = data.warpColors.slice(0, warpCount);
+    }
+    if (Array.isArray(data.weftColors) && data.weftColors.length) {
+      weftColors = data.weftColors.slice(0, weftCount);
+    }
 
-    if (Array.isArray(data.threading) && data.threading.length) threading = data.threading.slice(0, warpCount);
+    if (Array.isArray(data.threading) && data.threading.length) {
+      threading = data.threading.slice(0, warpCount);
+    }
     if (Array.isArray(data.treadling) && data.treadling.length) {
       treadling = data.treadling.slice(0, weftCount).map(arr => new Set(arr));
     }
     if (data.tieup) {
       tieup = { 1:new Set(), 2:new Set(), 3:new Set(), 4:new Set() };
-      Object.entries(data.tieup).forEach(([t, arr]) => arr.forEach(s => tieup[+t].add(+s)));
+      Object.entries(data.tieup).forEach(([t, arr]) =>
+        arr.forEach(s => tieup[+t].add(+s))
+      );
     }
 
-    buildColorBars(); buildThreadingUI(); buildTreadlingUI(); wireTieupUI(); scheduleRender();
+    buildColorBars();
+    buildThreadingUI();
+    buildTreadlingUI();
+    wireTieupUI();
+    scheduleRender();
   } catch {
     alert('Invalid JSON');
-  } finally { els.load.value = ''; }
+  } finally {
+    els.load.value = '';
+  }
 });
 
 // Counts & size handlers
@@ -316,21 +384,31 @@ function handleCountsChange() {
   const newWeft = clamp(parseInt(els.weftCountI.value, 10) || weftCount, 4, 64);
   if (newWarp === warpCount && newWeft === weftCount) return;
   resizeDraft(newWarp, newWeft);
-  buildColorBars(); buildThreadingUI(); buildTreadlingUI(); wireTieupUI(); scheduleRender();
+  buildColorBars();
+  buildThreadingUI();
+  buildTreadlingUI();
+  wireTieupUI();
+  scheduleRender();
 }
+
 ['input','change'].forEach(evt => {
   els.warpCountI.addEventListener(evt, handleCountsChange);
   els.weftCountI.addEventListener(evt, handleCountsChange);
   els.cellSize.addEventListener(evt, scheduleRender);
 });
+
 els.pattern.addEventListener('change', () => applyPreset(els.pattern.value));
 
 // ---------- First run ----------
-syncCountsCSS();
-syncCellSizeCSS(getSettings().cellSize);
-seedFromAB();
-buildColorBars();
-buildThreadingUI();
-buildTreadlingUI();
-wireTieupUI();
-applyPreset(els.pattern.value);
+window.addEventListener('load', () => {
+  initDefaultColorsFromCSS();
+  syncCountsCSS();
+  syncCellSizeCSS(getSettings().cellSize);
+  seedFromAB();
+  buildColorBars();
+  buildThreadingUI();
+  buildTreadlingUI();
+  wireTieupUI();
+  applyPreset(els.pattern.value);
+  scheduleRender();
+});

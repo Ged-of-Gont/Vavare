@@ -1,9 +1,10 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Weave Simulator</title>
+  <title>Vävare</title>
 
   <!-- Modern fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,14 +15,17 @@
 
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
   <header class="page-header">
-    <h1 class="brand"><span>Weave</span> Simulator</h1>
+    <h1 class="brand">Vävare</h1>
     <p class="tagline">Draft, color, and explore classic 4-shaft structures.</p>
   </header>
 
-  <section class="card controls">
-    <div class="field">
+<section class="card controls">
+  <div class="controls-grid">
+    <!-- ROW 1: four main selectors -->
+    <div class="control-unit">
       <label for="pattern">Pattern</label>
       <select id="pattern">
         <option value="plain">Plain</option>
@@ -40,77 +44,97 @@
       </select>
     </div>
 
-    <div class="field">
+    <div class="control-unit">
       <label for="warpCount">Warp ends</label>
       <input id="warpCount" type="number" min="4" max="64" value="12" />
     </div>
 
-    <div class="field">
+    <div class="control-unit">
       <label for="weftCount">Weft picks</label>
       <input id="weftCount" type="number" min="4" max="64" value="12" />
     </div>
 
-    <div class="field">
+    <div class="control-unit">
       <label for="cellSize">Cell size (px)</label>
       <input id="cellSize" type="number" min="10" max="60" value="46" />
     </div>
 
-    <div class="field">
-      <label for="warpA">Warp A</label>
-      <input id="warpA" type="color" value="#2b4fff" />
-    </div>
-    <div class="field">
-      <label for="warpB">Warp B</label>
-      <input id="warpB" type="color" value="#7aa1ff" />
-    </div>
-    <div class="field">
-      <label for="weftA">Weft A</label>
-      <input id="weftA" type="color" value="#ff2b2b" />
-    </div>
-    <div class="field">
-      <label for="weftB">Weft B</label>
-      <input id="weftB" type="color" value="#ffa0a0" />
+    <!-- ROW 2: four blocks, like the original -->
+    <div class="control-unit control-unit--colors">
+      <label>Warp colors</label>
+      <div class="color-row">
+        <input id="warpA" type="color" />
+        <input id="warpB" type="color" />
+      </div>
     </div>
 
-    <div class="actions">
-      <button id="applyAB" class="btn">Apply A/B</button>
-      <button id="randomize" class="btn ghost">Randomize A/B</button>
-      <button id="save" class="btn">Save JSON</button>
+    <div class="control-unit control-unit--colors">
+      <label>Weft colors</label>
+      <div class="color-row">
+        <input id="weftA" type="color" />
+        <input id="weftB" type="color" />
+      </div>
+    </div>
+
+    <div class="control-unit control-unit--btn">
+      <button id="applyAB" class="btn">Apply colors</button>
+      <button id="randomize" class="btn">Randomize Colors</button>
+    </div>
+
+    <div class="control-unit control-unit--btn">
+      <button id="save" class="btn">Save Pattern</button>
       <label class="btn file">
-        Load JSON
+        Load Pattern
         <input id="load" type="file" accept="application/json" />
       </label>
     </div>
-  </section>
+  </div>
+</section>
+
+
 
   <section class="card canvas-card">
-    <div class="layout">
-      <div class="spacer" aria-hidden="true"></div>
-      <div id="warpBar" class="bar warp"></div>
+    <div class="assembly">
+      <div class="layout">
+        <div class="spacer" aria-hidden="true"></div>
+        <div id="warpBar" class="bar warp"></div>
 
-      <div class="spacer2" aria-hidden="true"></div>
-      <div id="threading" class="draft threading"></div>
+        <div class="spacer2" aria-hidden="true"></div>
+        <div id="threading" class="draft threading"></div>
 
-      <div id="weftBar" class="bar weft"></div>
-      <canvas id="weave" width="800" height="800" aria-label="weave preview"></canvas>
-      <div id="treadling" class="draft treadling"></div>
-    </div>
+        <div id="weftBar" class="bar weft"></div>
+        <canvas id="weave" width="800" height="800" aria-label="weave preview"></canvas>
+        <div id="treadling" class="draft treadling"></div>
+      </div>
 
-    <div id="tieupWrap" class="tieup-wrap">
-      <div class="tieup">
-        <div class="hdr"></div>
-        <div class="hdr">S1</div><div class="hdr">S2</div><div class="hdr">S3</div><div class="hdr">S4</div>
-        <div class="rowhdr">T1</div><label><input type="checkbox" data-t="1" data-s="1"></label><label><input type="checkbox" data-t="1" data-s="2"></label><label><input type="checkbox" data-t="1" data-s="3"></label><label><input type="checkbox" data-t="1" data-s="4"></label>
-        <div class="rowhdr">T2</div><label><input type="checkbox" data-t="2" data-s="1"></label><label><input type="checkbox" data-t="2" data-s="2"></label><label><input type="checkbox" data-t="2" data-s="3"></label><label><input type="checkbox" data-t="2" data-s="4"></label>
-        <div class="rowhdr">T3</div><label><input type="checkbox" data-t="3" data-s="1"></label><label><input type="checkbox" data-t="3" data-s="2"></label><label><input type="checkbox" data-t="3" data-s="3"></label><label><input type="checkbox" data-t="3" data-s="4"></label>
-        <div class="rowhdr">T4</div><label><input type="checkbox" data-t="4" data-s="1"></label><label><input type="checkbox" data-t="4" data-s="2"></label><label><input type="checkbox" data-t="4" data-s="3"></label><label><input type="checkbox" data-t="4" data-s="4"></label>
+      <div id="tieupWrap" class="tieup-wrap">
+        <div class="tieup">
+          <div class="hdr"></div>
+          <div class="hdr">S1</div>
+          <div class="hdr">S2</div>
+          <div class="hdr">S3</div>
+          <div class="hdr">S4</div>
+          <div class="rowhdr">T1</div><label><input type="checkbox" data-t="1" data-s="1"></label><label><input
+              type="checkbox" data-t="1" data-s="2"></label><label><input type="checkbox" data-t="1"
+              data-s="3"></label><label><input type="checkbox" data-t="1" data-s="4"></label>
+          <div class="rowhdr">T2</div><label><input type="checkbox" data-t="2" data-s="1"></label><label><input
+              type="checkbox" data-t="2" data-s="2"></label><label><input type="checkbox" data-t="2"
+              data-s="3"></label><label><input type="checkbox" data-t="2" data-s="4"></label>
+          <div class="rowhdr">T3</div><label><input type="checkbox" data-t="3" data-s="1"></label><label><input
+              type="checkbox" data-t="3" data-s="2"></label><label><input type="checkbox" data-t="3"
+              data-s="3"></label><label><input type="checkbox" data-t="3" data-s="4"></label>
+          <div class="rowhdr">T4</div><label><input type="checkbox" data-t="4" data-s="1"></label><label><input
+              type="checkbox" data-t="4" data-s="2"></label><label><input type="checkbox" data-t="4"
+              data-s="3"></label><label><input type="checkbox" data-t="4" data-s="4"></label>
+        </div>
       </div>
     </div>
   </section>
 
-  <footer class="footer">Built for exploration—4-shaft friendly, color-obsessed.</footer>
+  <footer class="footer">Built to Explore 4-shaft Weaving patterns</footer>
 
   <script src="weave.js"></script>
   <script src="app.js"></script>
 </body>
+
 </html>
