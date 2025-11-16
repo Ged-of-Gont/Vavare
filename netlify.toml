@@ -1,0 +1,5 @@
+[[redirects]]
+from = "https://vavare.jowiho.com/*"
+to = "https://vävare.jowiho.com/:splat"
+status = 301
+force = true
