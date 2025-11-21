@@ -1,9 +1,9 @@
 :root {
   /* Core palette */
-  --bg: #021611;
+  --bg: #160216;
   --panel: #c7f5b3;
   --fg: #ff21b9;
-  --line: #67cf1d;
+  --line: #4ebb00;
   --accent: #ffea00;
 
   /* Yarn defaults used by JS */
@@ -11,12 +11,6 @@
   --warp-b: #6620a0;
   --weft-a: #eeb218;
   --weft-b: #c5730e;
-
-  /* Loom grid (synced from JS) */
-  --cs: 46px;
-  --warp: 12;
-  --weft: 12;
-  --th: 24px;
 
   --app-max-width: clamp(350px, 80vw, 1000px);
   --ui-font: 'Share Tech Mono', system-ui, monospace;

@@ -234,7 +234,17 @@ const PRESET_TWILL_1_3 = {
 };
 
 // Point / zigzag / diamond twills (very common folk motifs)
-const PRESET_POINT_TWILL_4 = { key: 'pointTwill4', threadingSeq: [1, 2, 3, 4, 3, 2], treadlingSeq: [[1], [2], [3], [4], [3], [2]], tieup: { 1: [1, 2], 2: [2, 3], 3: [3, 4], 4: [4, 1] } };
+const PRESET_POINT_TWILL_4 = { 
+  key: 'pointTwill4', 
+  threadingSeq: [1, 2, 3, 4, 3, 2], 
+  treadlingSeq: [[1], [2], [3], [4], [3], [2]], 
+  tieup: { 
+    1: [1, 2], 
+    2: [2, 3], 
+    3: [3, 4], 
+    4: [4, 1] 
+  } 
+};
 const PRESET_BROKEN_TWILL = { key: 'brokenTwill4', threadingSeq: [1, 2, 3, 4], treadlingSeq: [[1], [3], [2], [4]], tieup: { 1: [1, 2], 2: [2, 3], 3: [3, 4], 4: [4, 1] } };
 const PRESET_HERRINGBONE = { key: 'herringbone4', threadingSeq: [1, 2, 3, 4], treadlingSeq: [[1], [2], [3], [4], [3], [2]], tieup: { 1: [1, 2], 2: [2, 3], 3: [3, 4], 4: [4, 1] } };
 const PRESET_BIRDSEYE = { key: 'birdsEye4', threadingSeq: [1, 2, 3, 4, 3, 2], treadlingSeq: [[1], [2], [3], [4], [3], [2]], tieup: { 1: [1, 2], 2: [2, 3], 3: [3, 4], 4: [4, 1] } };
@@ -502,18 +512,34 @@ function applyPreset(name) {
     buildColorBars();
   }
 
-  // Houndstooth: 2×2 color blocks (classic 2 dark, 2 light in both directions)
-  if (name === 'houndstooth4') {
-    for (let c = 0; c < warpCount; c++) {
-      const block = Math.floor(c / 2);
-      warpColors[c] = (block % 2 === 0) ? els.warpA.value : els.warpB.value;
-    }
-    for (let r = 0; r < weftCount; r++) {
-      const block = Math.floor(r / 2);
-      weftColors[r] = (block % 2 === 0) ? els.weftA.value : els.weftB.value;
-    }
-    buildColorBars();
+// Houndstooth: classic 4×4 color blocks on 2/2 twill,
+// with warp and weft colors crossed (warpA ↔ weftB, warpB ↔ weftA).
+if (name === 'houndstooth4') {
+  // Take warp A/B as the base pair
+  const colorA = els.warpA.value;
+  const colorB = els.warpB.value;
+
+  // Force weft colors to be the crossed pair so the effect is correct
+  els.weftA.value = colorB; // weft A = warp B
+  els.weftB.value = colorA; // weft B = warp A
+
+  // Warp: AAAA BBBB AAAA BBBB ...
+  for (let c = 0; c < warpCount; c++) {
+    const block = Math.floor(c / 4); // 4 ends per color run
+    warpColors[c] = (block % 2 === 0) ? colorA : colorB;
   }
+
+  // Weft: BBBB AAAA BBBB AAAA ...
+  for (let r = 0; r < weftCount; r++) {
+    const block = Math.floor(r / 4); // 4 picks per color run
+    weftColors[r] = (block % 2 === 0) ? colorB : colorA;
+  }
+
+  buildColorBars();
+}
+
+
+
 
   // --- Rebuild UIs & draw ---
 
