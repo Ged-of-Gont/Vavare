@@ -1,25 +1,32 @@
-// app.js — dynamic counts + polished UI + multi-treadle
+// app.js — weave editor: state, UI, draft logic
 
+// ---------- Elements ----------
 const els = {
-  pattern: document.getElementById('pattern'),
+  pattern:    document.getElementById('pattern'),
+  layout:     document.getElementById('layout'),
   warpCountI: document.getElementById('warpCount'),
   weftCountI: document.getElementById('weftCount'),
-  warpA: document.getElementById('warpA'),
-  warpB: document.getElementById('warpB'),
-  weftA: document.getElementById('weftA'),
-  weftB: document.getElementById('weftB'),
-  cellSize: document.getElementById('cellSize'),
-  canvas: document.getElementById('weave'),
-  randomize: document.getElementById('randomize'),
-  applyAB: document.getElementById('applyAB'),
-  save: document.getElementById('save'),
-  load: document.getElementById('load'),
-  warpBar: document.getElementById('warpBar'),
-  weftBar: document.getElementById('weftBar'),
-  threading: document.getElementById('threading'),
-  treadling: document.getElementById('treadling'),
-  tieupWrap: document.getElementById('tieupWrap'),
+  warpA:      document.getElementById('warpA'),
+  warpB:      document.getElementById('warpB'),
+  weftA:      document.getElementById('weftA'),
+  weftB:      document.getElementById('weftB'),
+  cellSize:   document.getElementById('cellSize'),
+  canvas:     document.getElementById('weave'),
+  randomize:  document.getElementById('randomize'),
+  applyAB:    document.getElementById('applyAB'),
+  save:       document.getElementById('save'),
+  load:       document.getElementById('load'),
+  warpBar:    document.getElementById('warpBar'),
+  weftBar:    document.getElementById('weftBar'),
+  threading:  document.getElementById('threading'),
+  treadling:  document.getElementById('treadling'),
+  tieupWrap:  document.getElementById('tieupWrap'),
 };
+
+// ---------- Utilities ----------
+function clamp(n, min, max) {
+  return Math.max(min, Math.min(max, n));
+}
 
 function getCSSVar(name) {
   return getComputedStyle(document.documentElement)
@@ -27,6 +34,21 @@ function getCSSVar(name) {
     .trim();
 }
 
+function syncCellSizeCSS(px) {
+  document.documentElement.style.setProperty('--cs', px + 'px');
+}
+
+function syncCountsCSS() {
+  document.documentElement.style.setProperty('--warp', warpCount);
+  document.documentElement.style.setProperty('--weft', weftCount);
+}
+
+function getSettings() {
+  const cellSize = clamp(parseInt(els.cellSize.value, 10) || 18, 10, 60);
+  return { warpCount, weftCount, cellSize };
+}
+
+// ---------- Initial palette from CSS ----------
 function initDefaultColorsFromCSS() {
   const warpA = getCSSVar('--warp-a');
   const warpB = getCSSVar('--warp-b');
@@ -39,57 +61,138 @@ function initDefaultColorsFromCSS() {
   if (weftB) els.weftB.value = weftB;
 }
 
+// ---------- Core state ----------
 let warpCount = 12;
 let weftCount = 12;
+
 const ctx = els.canvas.getContext('2d');
 
-// Per-thread colors (dynamic)
+// Per-thread colors
 let warpColors = new Array(warpCount);
 let weftColors = new Array(weftCount);
 
+// Abstract color layout slots: 'A' / 'B' per warp/weft
+let warpSlots = new Array(warpCount).fill('A');
+let weftSlots = new Array(weftCount).fill('A');
+
 // Draft state (4 shafts)
-let threading = Array.from({ length: warpCount }, (_, c) => (c % 4) + 1);
-let treadling = Array.from({ length: weftCount }, (_, r) => new Set([(r % 4) + 1])); // multi
-let tieup = { 1: new Set([1, 2]), 2: new Set([2, 3]), 3: new Set([3, 4]), 4: new Set([4, 1]) };
+let threading  = Array.from({ length: warpCount }, (_, c) => (c % 4) + 1);
+let treadling  = Array.from({ length: weftCount }, (_, r) => new Set([(r % 4) + 1]));
+let tieup      = { 1: new Set([1, 2]), 2: new Set([2, 3]), 3: new Set([3, 4]), 4: new Set([4, 1]) };
 
-function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
+// ---------- Color layout + palette ----------
 
-function getSettings() {
-  const cellSize = clamp(parseInt(els.cellSize.value, 10) || 18, 10, 60);
-  return { warpCount, weftCount, cellSize };
+// Map A/B slots + palette to per-thread colors
+function applyPaletteToSlots() {
+  const warpA = els.warpA.value;
+  const warpB = els.warpB.value;
+  const weftA = els.weftA.value;
+  const weftB = els.weftB.value;
+
+  warpColors = new Array(warpCount);
+  weftColors = new Array(weftCount);
+
+  for (let c = 0; c < warpCount; c++) {
+    warpColors[c] = (warpSlots[c] === 'B') ? warpB : warpA;
+  }
+  for (let r = 0; r < weftCount; r++) {
+    weftColors[r] = (weftSlots[r] === 'B') ? weftB : weftA;
+  }
 }
 
-function syncCellSizeCSS(px) {
-  document.documentElement.style.setProperty('--cs', px + 'px');
+// ABAB stripes in both directions
+function setLayoutStripes() {
+  for (let c = 0; c < warpCount; c++) {
+    warpSlots[c] = (c % 2 === 0) ? 'A' : 'B';
+  }
+  for (let r = 0; r < weftCount; r++) {
+    weftSlots[r] = (r % 2 === 0) ? 'A' : 'B';
+  }
 }
 
-function syncCountsCSS() {
-  document.documentElement.style.setProperty('--warp', warpCount);
-  document.documentElement.style.setProperty('--weft', weftCount);
+// Log cabin: AABB / AABB
+function setLayoutLogCabin() {
+  for (let c = 0; c < warpCount; c++) {
+    const block = Math.floor(c / 2);
+    warpSlots[c] = (block % 2 === 0) ? 'A' : 'B';
+  }
+  for (let r = 0; r < weftCount; r++) {
+    const block = Math.floor(r / 2);
+    weftSlots[r] = (block % 2 === 0) ? 'A' : 'B';
+  }
 }
 
-// ---------- Resize draft safely (preserve existing where possible) ----------
+// Houndstooth: warp AAAA BBBB..., weft BBBB AAAA...
+function setLayoutHoundstooth() {
+  for (let c = 0; c < warpCount; c++) {
+    const block = Math.floor(c / 4);
+    warpSlots[c] = (block % 2 === 0) ? 'A' : 'B';
+  }
+  for (let r = 0; r < weftCount; r++) {
+    const block = Math.floor(r / 4);
+    weftSlots[r] = (block % 2 === 0) ? 'B' : 'A';
+  }
+}
+
+// Cross weft palette for classic houndstooth
+function setHoundstoothPaletteCross() {
+  const colorA = els.warpA.value;
+  const colorB = els.warpB.value;
+  els.weftA.value = colorB; // weft A = warp B
+  els.weftB.value = colorA; // weft B = warp A
+}
+
+// Decide layout based on UI + pattern name
+function setLayoutFromUI(patternName) {
+  const modeEl = els.layout;
+  const mode = modeEl ? modeEl.value : 'auto';
+
+  if (mode === 'stripes') {
+    setLayoutStripes();
+  } else if (mode === 'logCabin') {
+    setLayoutLogCabin();
+  } else if (mode === 'houndstooth') {
+    setLayoutHoundstooth();
+    setHoundstoothPaletteCross();
+  } else {
+    // "auto" layout based on pattern
+    if (patternName === 'logCabin') {
+      setLayoutLogCabin();
+    } else if (patternName === 'shadowTwill4') {
+      setLayoutStripes();
+    } else if (patternName === 'houndstooth4') {
+      setLayoutHoundstooth();
+      setHoundstoothPaletteCross();
+    } else {
+      setLayoutStripes();
+    }
+  }
+}
+
+// ---------- Resizing draft ----------
+
 function resizeDraft(newWarp, newWeft) {
-  // Colors
-  const oldWarp = warpColors.slice();
-  const oldWeft = weftColors.slice();
-  warpColors = new Array(newWarp);
-  weftColors = new Array(newWeft);
+  // Preserve slots and draft structure where possible
+  const oldWarpSlots = warpSlots.slice();
+  const oldWeftSlots = weftSlots.slice();
+  const oldThr       = threading.slice();
+  const oldTrd       = treadling.slice();
+
+  warpSlots = new Array(newWarp);
+  weftSlots = new Array(newWeft);
+
   for (let c = 0; c < newWarp; c++) {
-    warpColors[c] = oldWarp[c] ?? ((c % 2 === 0) ? els.warpA.value : els.warpB.value);
+    warpSlots[c] = oldWarpSlots[c] ?? ((c % 2 === 0) ? 'A' : 'B');
   }
   for (let r = 0; r < newWeft; r++) {
-    weftColors[r] = oldWeft[r] ?? ((r % 2 === 0) ? els.weftA.value : els.weftB.value);
+    weftSlots[r] = oldWeftSlots[r] ?? ((r % 2 === 0) ? 'A' : 'B');
   }
 
-  // Threading / treadling
-  const oldThr = threading.slice();
   threading = new Array(newWarp);
   for (let c = 0; c < newWarp; c++) {
     threading[c] = oldThr[c] ?? ((c % 4) + 1);
   }
 
-  const oldTrd = treadling.slice();
   treadling = new Array(newWeft);
   for (let r = 0; r < newWeft; r++) {
     treadling[r] = oldTrd[r] ? new Set(oldTrd[r]) : new Set([(r % 4) + 1]);
@@ -98,23 +201,31 @@ function resizeDraft(newWarp, newWeft) {
   warpCount = newWarp;
   weftCount = newWeft;
   syncCountsCSS();
+
+  applyPaletteToSlots();
 }
 
-// ---------- Color bars ----------
+// ---------- Color bars UI ----------
+
 function buildBar(container, colors, titlePrefix) {
   container.innerHTML = '';
   const len = (titlePrefix === 'Warp') ? warpCount : weftCount;
+
   for (let i = 0; i < len; i++) {
-    const wrap = document.createElement('div');
+    const wrap  = document.createElement('div');
     wrap.className = 'cell';
+
     const input = document.createElement('input');
-    input.type = 'color';
+    input.type  = 'color';
     input.value = colors[i] || '#cccccc';
     input.title = `${titlePrefix} ${i + 1}`;
+
+    // Direct per-thread color override (does not touch layout slots)
     input.addEventListener('input', () => {
       colors[i] = input.value;
       scheduleRender();
     });
+
     wrap.appendChild(input);
     container.appendChild(wrap);
   }
@@ -125,14 +236,12 @@ function buildColorBars() {
   buildBar(els.weftBar, weftColors, 'Weft');
 }
 
-function seedFromAB() {
-  for (let c = 0; c < warpCount; c++) warpColors[c] = (c % 2 === 0) ? els.warpA.value : els.warpB.value;
-  for (let r = 0; r < weftCount; r++) weftColors[r] = (r % 2 === 0) ? els.weftA.value : els.weftB.value;
-}
+// ---------- Draft UI (threading / treadling / tie-up) ----------
 
-// ---------- Draft UI ----------
 function cycle(v, min = 1, max = 4, backwards = false) {
-  return backwards ? (v - 2 + max) % max + 1 : (v % max) + 1;
+  return backwards
+    ? (v - 2 + max) % max + 1
+    : (v % max) + 1;
 }
 
 function buildThreadingUI() {
@@ -140,13 +249,15 @@ function buildThreadingUI() {
   for (let c = 0; c < warpCount; c++) {
     const b = document.createElement('button');
     b.textContent = threading[c];
-    b.title = `Warp ${c + 1}: Shaft ${threading[c]}`;
+    b.title       = `Warp ${c + 1}: Shaft ${threading[c]}`;
+
     b.addEventListener('click', (e) => {
       threading[c] = cycle(threading[c], 1, 4, e.shiftKey);
       b.textContent = threading[c];
-      b.title = `Warp ${c + 1}: Shaft ${threading[c]}`;
+      b.title       = `Warp ${c + 1}: Shaft ${threading[c]}`;
       scheduleRender();
     });
+
     els.threading.appendChild(b);
   }
 }
@@ -156,27 +267,40 @@ function buildTreadlingUI() {
   for (let r = 0; r < weftCount; r++) {
     const row = document.createElement('div');
     row.className = 'treadle-row';
+
     for (let t = 1; t <= 4; t++) {
       const b = document.createElement('button');
       b.textContent = t;
-      b.title = `Pick ${r + 1}: Toggle treadle ${t}`;
+      b.title       = `Pick ${r + 1}: Toggle treadle ${t}`;
+
       if (treadling[r].has(t)) b.classList.add('on');
+
       b.addEventListener('click', () => {
-        if (treadling[r].has(t)) treadling[r].delete(t);
-        else treadling[r].add(t);
-        if (treadling[r].size === 0) treadling[r].add(t); // keep at least one
+        if (treadling[r].has(t)) {
+          treadling[r].delete(t);
+        } else {
+          treadling[r].add(t);
+        }
+        // Ensure at least one treadle is active
+        if (treadling[r].size === 0) {
+          treadling[r].add(t);
+        }
         b.classList.toggle('on', treadling[r].has(t));
         scheduleRender();
       });
+
       row.appendChild(b);
     }
+
     els.treadling.appendChild(row);
   }
 }
 
 function wireTieupUI() {
   els.tieupWrap.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-    const t = +cb.dataset.t, s = +cb.dataset.s;
+    const t = +cb.dataset.t;
+    const s = +cb.dataset.s;
+
     cb.checked = tieup[t].has(s);
     cb.onchange = () => {
       cb.checked ? tieup[t].add(s) : tieup[t].delete(s);
@@ -186,287 +310,29 @@ function wireTieupUI() {
 }
 
 // ---------- Pattern from draft ----------
+
 function buildPatternFromDraft(rows, cols) {
   const m = Array.from({ length: rows }, () => Array(cols).fill(false));
+
   for (let r = 0; r < rows; r++) {
     const lifted = new Set();
-    treadling[r].forEach(t => (tieup[t] || new Set()).forEach(s => lifted.add(s)));
-    for (let c = 0; c < cols; c++) m[r][c] = lifted.has(threading[c]); // true = warp over
+    treadling[r].forEach(t =>
+      (tieup[t] || new Set()).forEach(s => lifted.add(s))
+    );
+
+    for (let c = 0; c < cols; c++) {
+      // true = warp over
+      m[r][c] = lifted.has(threading[c]);
+    }
   }
   return m;
 }
 
-// ---------- Presets (declarative) ----------
-
-// Basic tabby / color-and-weave foundations
-const PRESET_PLAIN = { key: 'plain', threadingSeq: [1, 2], treadlingSeq: [[1], [2]], tieup: { 1: [1], 2: [2], 3: [], 4: [] } };
-const PRESET_BASKET_2X2 = { key: 'basket2x2', threadingSeq: [1, 1, 2, 2], treadlingSeq: [[1], [1], [2], [2]], tieup: { 1: [1], 2: [2], 3: [], 4: [] } };
-const PRESET_LOG_CABIN = { key: 'logCabin', threadingSeq: [1, 2], treadlingSeq: [[1], [2]], tieup: { 1: [1], 2: [2], 3: [], 4: [] } };
-
-// Twill family (many cultures)
-const PRESET_TWILL_2X2 = { key: 'twill2x2', threadingSeq: [1, 2, 3, 4], treadlingSeq: [[1], [2], [3], [4]], tieup: { 1: [1, 2], 2: [2, 3], 3: [3, 4], 4: [4, 1] } };
-const PRESET_TWILL_2_1_3S = { key: 'twill2_1_3shaft', threadingSeq: [1, 2, 3], treadlingSeq: [[1], [2], [3]], tieup: { 1: [1, 2], 2: [2, 3], 3: [3, 1], 4: [] } };
-
-// 3/1 warp-faced twill (denser warp floats)
-const PRESET_TWILL_3_1 = {
-  key: 'twill3_1',
-  threadingSeq: [1, 2, 3, 4],
-  treadlingSeq: [[1], [2], [3], [4]],
-  tieup: {
-    1: [1, 2, 3], // 4 down
-    2: [2, 3, 4], // 1 down
-    3: [3, 4, 1], // 2 down
-    4: [4, 1, 2]  // 3 down
-  }
-};
-
-// 1/3 weft-faced twill (strong weft floats)
-const PRESET_TWILL_1_3 = {
-  key: 'twill1_3',
-  threadingSeq: [1, 2, 3, 4],
-  treadlingSeq: [[1], [2], [3], [4]],
-  tieup: {
-    1: [1],
-    2: [2],
-    3: [3],
-    4: [4]
-  }
-};
-
-// Point / zigzag / diamond twills (very common folk motifs)
-const PRESET_POINT_TWILL_4 = { 
-  key: 'pointTwill4', 
-  threadingSeq: [1, 2, 3, 4, 3, 2], 
-  treadlingSeq: [[1], [2], [3], [4], [3], [2]], 
-  tieup: { 
-    1: [1, 2], 
-    2: [2, 3], 
-    3: [3, 4], 
-    4: [4, 1] 
-  } 
-};
-const PRESET_BROKEN_TWILL = { key: 'brokenTwill4', threadingSeq: [1, 2, 3, 4], treadlingSeq: [[1], [3], [2], [4]], tieup: { 1: [1, 2], 2: [2, 3], 3: [3, 4], 4: [4, 1] } };
-const PRESET_HERRINGBONE = { key: 'herringbone4', threadingSeq: [1, 2, 3, 4], treadlingSeq: [[1], [2], [3], [4], [3], [2]], tieup: { 1: [1, 2], 2: [2, 3], 3: [3, 4], 4: [4, 1] } };
-const PRESET_BIRDSEYE = { key: 'birdsEye4', threadingSeq: [1, 2, 3, 4, 3, 2], treadlingSeq: [[1], [2], [3], [4], [3], [2]], tieup: { 1: [1, 2], 2: [2, 3], 3: [3, 4], 4: [4, 1] } };
-const PRESET_GOOSEEYE = { key: 'gooseEye4', threadingSeq: [1, 2, 3, 4, 4, 3, 2, 1], treadlingSeq: [[1], [2], [3], [4], [4], [3], [2], [1]], tieup: { 1: [1, 2], 2: [2, 3], 3: [3, 4], 4: [4, 1] } };
-
-// Extended point & broken diamond (big zigzags / diamonds)
-const PRESET_EXT_POINT_TWILL = {
-  key: 'extendedPointTwill4',
-  threadingSeq: [1, 2, 3, 4, 3, 2, 1, 2, 3, 4, 3, 2],
-  treadlingSeq: [[1], [2], [3], [4], [3], [2], [1], [2], [3], [4], [3], [2]],
-  tieup: {
-    1: [1, 2],
-    2: [2, 3],
-    3: [3, 4],
-    4: [4, 1]
-  }
-};
-
-const PRESET_BROKEN_DIAMOND = {
-  key: 'brokenDiamond4',
-  threadingSeq: [1, 2, 3, 4, 3, 2, 1, 2],
-  treadlingSeq: [[1], [3], [2], [4], [3], [1], [4], [2]],
-  tieup: {
-    1: [1, 2],
-    2: [2, 3],
-    3: [3, 4],
-    4: [4, 1]
-  }
-};
-
-// Waffle-ish weave (textured cells)
-const PRESET_WAFFLE_4 = {
-  key: 'waffle4',
-  threadingSeq: [1, 2, 3, 4, 3, 2, 1, 2, 3, 4, 3, 2],
-  treadlingSeq: [[1], [2], [3], [4], [3], [2], [1], [2], [3], [4], [3], [2]],
-  tieup: {
-    1: [1, 2, 3],
-    2: [2, 3, 4],
-    3: [1, 3, 4],
-    4: [1, 2, 4]
-  }
-};
-
-// Scandinavian-ish twill-derived: Rosepath, Ms & Os (you already had)
-const PRESET_ROSEPATH = { key: 'rosepath4', threadingSeq: [1, 2, 3, 4], treadlingSeq: [[1], [2], [3], [4], [3], [2]], tieup: { 1: [1, 3], 2: [2, 4], 3: [1, 2], 4: [3, 4] } };
-const PRESET_MS_OS = { key: 'msos4', threadingSeq: [1, 2, 1, 2, 3, 4, 3, 4], treadlingSeq: [[1], [2], [1], [2], [3], [4], [3], [4]], tieup: { 1: [1, 2], 2: [2, 3], 3: [3, 4], 4: [4, 1] } };
-
-// Huck spot you already had
-const PRESET_HUCK_SPOT = { key: 'huckSpot4', threadingSeq: [1, 2, 1, 2, 3, 4, 3, 4], treadlingSeq: [[1], [2], [1], [2], [3], [4], [3], [4]], tieup: { 1: [1, 3], 2: [2, 4], 3: [1, 2], 4: [3, 4] } };
-
-// ========== Block / tied weaves (Scandinavian, coverlets, etc.) ==========
-
-// Monk’s Belt / Munkabälte (Swedish, 2 blocks)
-const PRESET_MONKS_BELT = {
-  key: 'monksBelt4',
-  threadingSeq: [1, 1, 2, 2, 3, 3, 4, 4],
-  treadlingSeq: [[1], [3], [2], [4]], // pattern A, tabby A/B, pattern B, tabby B
-  tieup: {
-    1: [1, 2], // pattern block A
-    2: [3, 4], // pattern block B
-    3: [1, 3], // tabby 1
-    4: [2, 4]  // tabby 2
-  }
-};
-
-// Halvdräll (blocky dräll, very Swedish)
-const PRESET_HALVDRALL = {
-  key: 'halvDrall4',
-  threadingSeq: [1, 2, 1, 2, 3, 4, 3, 4],
-  treadlingSeq: [[1], [2], [3], [4]],
-  tieup: {
-    1: [1, 2, 3],
-    2: [2, 3, 4],
-    3: [1, 3, 4],
-    4: [1, 2, 4]
-  }
-};
-
-// Summer & Winter (simple 2-block)
-const PRESET_SUMMER_WINTER = {
-  key: 'summerWinter4',
-  // tie-downs on 1 & 2, pattern units on 3 & 4
-  threadingSeq: [1, 3, 1, 3, 2, 4, 2, 4],
-  treadlingSeq: [[3], [1], [4], [2]],
-  tieup: {
-    1: [1],   // tabby A
-    2: [2],   // tabby B
-    3: [1, 3], // pattern block A
-    4: [2, 4]  // pattern block B
-  }
-};
-
-// Crackle weave (Scandi/coverlet type, lots of little floats)
-const PRESET_CRACKLE = {
-  key: 'crackle4',
-  threadingSeq: [1, 2, 3, 2, 2, 3, 4, 3],
-  treadlingSeq: [[1], [2], [3], [4]],
-  tieup: {
-    1: [1, 2],
-    2: [2, 3],
-    3: [3, 4],
-    4: [4, 1]
-  }
-};
-
-// ========== Lace / spot weaves (Huck, Swedish lace, etc.) ==========
-
-// Proper Huck lace-ish (warp & weft float areas)
-const PRESET_HUCK_LACE = {
-  key: 'huckLace4',
-  threadingSeq: [1, 2, 1, 2, 3, 4, 3, 4],
-  treadlingSeq: [[1], [2], [3], [4], [1], [3], [2], [4]],
-  tieup: {
-    1: [1, 3],
-    2: [2, 4],
-    3: [1, 4],
-    4: [2, 3]
-  }
-};
-
-// Swedish lace / Bronson-flavored block lace
-const PRESET_SWEDISH_LACE = {
-  key: 'swedishLace4',
-  threadingSeq: [1, 2, 1, 2, 3, 4, 3, 4],
-  treadlingSeq: [[1], [4], [2], [3]],
-  tieup: {
-    1: [1, 2, 4], // lace block A
-    2: [1, 3],   // ground / tie
-    3: [2, 4],   // ground / tie
-    4: [2, 3, 4]  // lace block B
-  }
-};
-
-// ========== Rug / boundweave folk structures ==========
-
-// Krokbragd (Norwegian boundweave, 3 shafts on a 4-shaft frame)
-const PRESET_KROKBRAGD = {
-  key: 'krokbragd3on4',
-  threadingSeq: [1, 2, 3, 1, 2, 3],
-  treadlingSeq: [[1], [2], [3]],
-  tieup: {
-    1: [1, 2],
-    2: [2, 3],
-    3: [1, 3],
-    4: []
-  }
-};
-
-// ========== Color-and-weave “named looks” ==========
-
-// Shadow weave on straight draw (effect from light/dark ordering)
-const PRESET_SHADOW_TWILL = {
-  key: 'shadowTwill4',
-  threadingSeq: [1, 2, 3, 4, 1, 2, 3, 4],
-  treadlingSeq: [[1], [2], [3], [4], [1], [2], [3], [4]],
-  tieup: {
-    1: [1, 2],
-    2: [2, 3],
-    3: [3, 4],
-    4: [4, 1]
-  }
-};
-
-// Houndstooth (classic 2/2 twill color effect)
-const PRESET_HOUNDSTOOTH = {
-  key: 'houndstooth4',
-  threadingSeq: [1, 2, 3, 4],
-  treadlingSeq: [[1], [2], [3], [4]],
-  tieup: {
-    1: [1, 2],
-    2: [2, 3],
-    3: [3, 4],
-    4: [4, 1]
-  }
-};
-
-// ---------- Preset registry ----------
-
-const PRESETS = {
-  // Plain / basket / log cabin
-  plain: PRESET_PLAIN,
-  basket2x2: PRESET_BASKET_2X2,
-  logCabin: PRESET_LOG_CABIN,
-
-  // Twills & twill-based
-  twill2x2: PRESET_TWILL_2X2,
-  twill2_1_3shaft: PRESET_TWILL_2_1_3S,
-  twill3_1: PRESET_TWILL_3_1,
-  twill1_3: PRESET_TWILL_1_3,
-  pointTwill4: PRESET_POINT_TWILL_4,
-  brokenTwill4: PRESET_BROKEN_TWILL,
-  extendedPointTwill4: PRESET_EXT_POINT_TWILL,
-  brokenDiamond4: PRESET_BROKEN_DIAMOND,
-  herringbone4: PRESET_HERRINGBONE,
-  birdsEye4: PRESET_BIRDSEYE,
-  gooseEye4: PRESET_GOOSEEYE,
-  waffle4: PRESET_WAFFLE_4,
-
-  // Rosepath / Scandinavian twill-derived
-  rosepath4: PRESET_ROSEPATH,
-  msos4: PRESET_MS_OS,
-  krokbragd3on4: PRESET_KROKBRAGD,
-
-  // Block / tied weaves
-  monksBelt4: PRESET_MONKS_BELT,
-  halvDrall4: PRESET_HALVDRALL,
-  summerWinter4: PRESET_SUMMER_WINTER,
-  crackle4: PRESET_CRACKLE,
-
-  // Lace / spots
-  huckSpot4: PRESET_HUCK_SPOT,
-  huckLace4: PRESET_HUCK_LACE,
-  swedishLace4: PRESET_SWEDISH_LACE,
-
-  // Color-and-weave named looks
-  shadowTwill4: PRESET_SHADOW_TWILL,
-  houndstooth4: PRESET_HOUNDSTOOTH,
-};
-
+// ---------- Presets ----------
 
 function repeatToLength(seq, n) {
-  const out = new Array(n), L = seq.length;
+  const out = new Array(n);
+  const L = seq.length;
   for (let i = 0; i < n; i++) out[i] = seq[i % L];
   return out;
 }
@@ -475,7 +341,7 @@ function applyPreset(name) {
   const p = PRESETS[name];
   if (!p) return;
 
-  // Structure
+  // Draft structure from preset
   threading = repeatToLength(p.threadingSeq, warpCount);
   const trSeq = repeatToLength(p.treadlingSeq, weftCount);
   treadling = trSeq.map(arr => new Set(arr));
@@ -486,73 +352,22 @@ function applyPreset(name) {
     4: new Set(p.tieup[4] || []),
   };
 
-  // --- Pattern-specific color seeding (optional, only for color-and-weave presets) ---
+  // Color layout from UI + pattern, then palette
+  setLayoutFromUI(name);
+  applyPaletteToSlots();
 
-  // Log Cabin: AABB blocks in both directions
-  if (name === 'logCabin') {
-    for (let c = 0; c < warpCount; c++) {
-      const block = Math.floor(c / 2);
-      warpColors[c] = (block % 2 === 0) ? els.warpA.value : els.warpB.value;
-    }
-    for (let r = 0; r < weftCount; r++) {
-      const block = Math.floor(r / 2);
-      weftColors[r] = (block % 2 === 0) ? els.weftA.value : els.weftB.value;
-    }
-    buildColorBars();
-  }
-
-  // Shadow Twill: simple ABAB stripes in both directions
-  if (name === 'shadowTwill4') {
-    for (let c = 0; c < warpCount; c++) {
-      warpColors[c] = (c % 2 === 0) ? els.warpA.value : els.warpB.value;
-    }
-    for (let r = 0; r < weftCount; r++) {
-      weftColors[r] = (r % 2 === 0) ? els.weftA.value : els.weftB.value;
-    }
-    buildColorBars();
-  }
-
-// Houndstooth: classic 4×4 color blocks on 2/2 twill,
-// with warp and weft colors crossed (warpA ↔ weftB, warpB ↔ weftA).
-if (name === 'houndstooth4') {
-  // Take warp A/B as the base pair
-  const colorA = els.warpA.value;
-  const colorB = els.warpB.value;
-
-  // Force weft colors to be the crossed pair so the effect is correct
-  els.weftA.value = colorB; // weft A = warp B
-  els.weftB.value = colorA; // weft B = warp A
-
-  // Warp: AAAA BBBB AAAA BBBB ...
-  for (let c = 0; c < warpCount; c++) {
-    const block = Math.floor(c / 4); // 4 ends per color run
-    warpColors[c] = (block % 2 === 0) ? colorA : colorB;
-  }
-
-  // Weft: BBBB AAAA BBBB AAAA ...
-  for (let r = 0; r < weftCount; r++) {
-    const block = Math.floor(r / 4); // 4 picks per color run
-    weftColors[r] = (block % 2 === 0) ? colorB : colorA;
-  }
-
+  // UI + render
   buildColorBars();
-}
-
-
-
-
-  // --- Rebuild UIs & draw ---
-
   buildThreadingUI();
   buildTreadlingUI();
   wireTieupUI();
   scheduleRender();
 }
 
-
-
 // ---------- Render (coalesced) ----------
+
 let rafId = null;
+
 function scheduleRender() {
   if (rafId) return;
   rafId = requestAnimationFrame(() => {
@@ -563,7 +378,7 @@ function scheduleRender() {
     window.WeaveLib.drawWeave(ctx, {
       warpCount: s.warpCount,
       weftCount: s.weftCount,
-      cellSize: s.cellSize,
+      cellSize:  s.cellSize,
       warpColors,
       weftColors,
       pattern
@@ -571,7 +386,8 @@ function scheduleRender() {
   });
 }
 
-// ---------- Utils ----------
+// ---------- Misc utils (color) ----------
+
 function randColor() {
   const h = Math.floor(Math.random() * 360);
   const s = 60 + Math.floor(Math.random() * 30);
@@ -580,39 +396,50 @@ function randColor() {
 }
 
 function hslToHex(h, s, l) {
-  s /= 100; l /= 100;
+  s /= 100;
+  l /= 100;
   const k = n => (n + h / 30) % 12;
   const a = s * Math.min(l, 1 - l);
-  const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
-  const toHex = x => Math.round(255 * x).toString(16).padStart(2, '0');
+  const f = n =>
+    l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  const toHex = x =>
+    Math.round(255 * x).toString(16).padStart(2, '0');
   return `#${toHex(f(0))}${toHex(f(8))}${toHex(f(4))}`;
 }
 
 // ---------- Events ----------
+
+// Palette apply: recolor current layout
 els.applyAB.addEventListener('click', () => {
-  seedFromAB();
+  applyPaletteToSlots();
   buildColorBars();
   scheduleRender();
 });
 
+// Palette randomize: new colors, same layout
 els.randomize.addEventListener('click', () => {
   els.warpA.value = randColor();
   els.warpB.value = randColor();
   els.weftA.value = randColor();
   els.weftB.value = randColor();
-  seedFromAB();
+  applyPaletteToSlots();
   buildColorBars();
   scheduleRender();
 });
 
+// Save/load
 els.save.addEventListener('click', () => {
   const data = {
     version: 5,
-    warpCount, weftCount,
+    warpCount,
+    weftCount,
     ...getSettings(),
-    warpA: els.warpA.value, warpB: els.warpB.value,
-    weftA: els.weftA.value, weftB: els.weftB.value,
-    warpColors, weftColors,
+    warpA: els.warpA.value,
+    warpB: els.warpB.value,
+    weftA: els.weftA.value,
+    weftB: els.weftB.value,
+    warpColors,
+    weftColors,
     threading,
     treadling: treadling.map(set => [...set]),
     tieup: Object.fromEntries(
@@ -630,21 +457,28 @@ els.save.addEventListener('click', () => {
 els.load.addEventListener('change', async () => {
   const file = els.load.files[0];
   if (!file) return;
+
   const text = await file.text();
   try {
     const data = JSON.parse(text);
-    if (Number.isInteger(data.warpCount)) warpCount = clamp(data.warpCount, 4, 64);
-    if (Number.isInteger(data.weftCount)) weftCount = clamp(data.weftCount, 4, 64);
+
+    if (Number.isInteger(data.warpCount)) {
+      warpCount = clamp(data.warpCount, 4, 64);
+    }
+    if (Number.isInteger(data.weftCount)) {
+      weftCount = clamp(data.weftCount, 4, 64);
+    }
     els.warpCountI.value = warpCount;
     els.weftCountI.value = weftCount;
-    syncCountsCSS();
+
+    // Resize draft (slots + structure), then apply saved details
     resizeDraft(warpCount, weftCount);
 
     if (data.cellSize) els.cellSize.value = data.cellSize;
-    if (data.warpA) els.warpA.value = data.warpA;
-    if (data.warpB) els.warpB.value = data.warpB;
-    if (data.weftA) els.weftA.value = data.weftA;
-    if (data.weftB) els.weftB.value = data.weftB;
+    if (data.warpA)    els.warpA.value   = data.warpA;
+    if (data.warpB)    els.warpB.value   = data.warpB;
+    if (data.weftA)    els.weftA.value   = data.weftA;
+    if (data.weftB)    els.weftB.value   = data.weftB;
 
     if (Array.isArray(data.warpColors) && data.warpColors.length) {
       warpColors = data.warpColors.slice(0, warpCount);
@@ -657,8 +491,11 @@ els.load.addEventListener('change', async () => {
       threading = data.threading.slice(0, warpCount);
     }
     if (Array.isArray(data.treadling) && data.treadling.length) {
-      treadling = data.treadling.slice(0, weftCount).map(arr => new Set(arr));
+      treadling = data.treadling
+        .slice(0, weftCount)
+        .map(arr => new Set(arr));
     }
+
     if (data.tieup) {
       tieup = { 1: new Set(), 2: new Set(), 3: new Set(), 4: new Set() };
       Object.entries(data.tieup).forEach(([t, arr]) =>
@@ -678,11 +515,12 @@ els.load.addEventListener('change', async () => {
   }
 });
 
-// Counts & size handlers
+// Counts & size
 function handleCountsChange() {
   const newWarp = clamp(parseInt(els.warpCountI.value, 10) || warpCount, 4, 64);
   const newWeft = clamp(parseInt(els.weftCountI.value, 10) || weftCount, 4, 64);
   if (newWarp === warpCount && newWeft === weftCount) return;
+
   resizeDraft(newWarp, newWeft);
   buildColorBars();
   buildThreadingUI();
@@ -697,34 +535,40 @@ function handleCountsChange() {
   els.cellSize.addEventListener(evt, scheduleRender);
 });
 
+// Pattern + layout selectors
 els.pattern.addEventListener('change', () => applyPreset(els.pattern.value));
+
+if (els.layout) {
+  els.layout.addEventListener('change', () => {
+    setLayoutFromUI(els.pattern.value);
+    applyPaletteToSlots();
+    buildColorBars();
+    scheduleRender();
+  });
+}
 
 // ---------- First run ----------
 window.addEventListener('load', () => {
   initDefaultColorsFromCSS();
 
-  // Read initial warp/weft from the HTML inputs and resize safely
   const initialWarp = clamp(parseInt(els.warpCountI.value, 10) || warpCount, 4, 64);
   const initialWeft = clamp(parseInt(els.weftCountI.value, 10) || weftCount, 4, 64);
   resizeDraft(initialWarp, initialWeft);
 
-  // Make sure inputs reflect the clamped values
   els.warpCountI.value = warpCount;
   els.weftCountI.value = weftCount;
 
-  // Sync CSS custom properties
   syncCountsCSS();
   syncCellSizeCSS(getSettings().cellSize);
 
-  // Initial colors and draft UI
-  seedFromAB();
+  // Initial layout: stripes + palette, then apply selected preset
+  setLayoutStripes();
+  applyPaletteToSlots();
   buildColorBars();
   buildThreadingUI();
   buildTreadlingUI();
   wireTieupUI();
 
-  // Apply whatever preset is selected in the <select>
   applyPreset(els.pattern.value);
   scheduleRender();
 });
-

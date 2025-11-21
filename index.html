@@ -23,108 +23,118 @@
   </header>
 
   <section class="card controls">
-    <div class="controls-grid">
-      <!-- ROW 1: four main selectors -->
-      <div class="control-unit">
-        <label for="pattern">Pattern</label>
-        <select id="pattern">
-          <optgroup label="Plain / Basket / Foundations">
-            <option value="plain">Plain (tabby, 2-shaft)</option>
-            <option value="basket2x2">Basket 2×2 (2-shaft)</option>
-            <option value="logCabin">Log Cabin (color-and-weave)</option>
-          </optgroup>
+  <div class="controls-grid">
+    <!-- ROW 1: main selectors -->
+    <div class="control-unit">
+      <label for="pattern">Pattern</label>
+      <select id="pattern">
+        <optgroup label="Plain / Basket / Foundations">
+          <option value="plain">Plain (tabby, 2-shaft)</option>
+          <option value="basket2x2">Basket 2×2 (2-shaft)</option>
+          <option value="logCabin">Log Cabin (color-and-weave)</option>
+        </optgroup>
 
-          <optgroup label="Straight Twills">
-            <option value="twill2x2">Twill 2×2 (4-shaft)</option>
-            <option value="twill3_1">Twill 3/1 (warp-faced, 4-shaft)</option>
-            <option value="twill1_3">Twill 1/3 (weft-faced, 4-shaft)</option>
-            <option value="twill2_1_3shaft">Twill 2/1 (3-shaft)</option>
-          </optgroup>
+        <optgroup label="Straight Twills">
+          <option value="twill2x2">Twill 2×2 (4-shaft)</option>
+          <option value="twill3_1">Twill 3/1 (warp-faced, 4-shaft)</option>
+          <option value="twill1_3">Twill 1/3 (weft-faced, 4-shaft)</option>
+          <option value="twill2_1_3shaft">Twill 2/1 (3-shaft)</option>
+        </optgroup>
 
-          <optgroup label="Point &amp; Fancy Twills">
-            <option value="pointTwill4">Point Twill (4-shaft)</option>
-            <option value="extendedPointTwill4">Extended Point Twill (4-shaft)</option>
-            <option value="brokenTwill4">Broken Twill (4-shaft)</option>
-            <option value="brokenDiamond4">Broken Diamond Twill (4-shaft)</option>
-            <option value="herringbone4">Herringbone (4-shaft)</option>
-            <option value="birdsEye4">Bird’s-Eye (4-shaft)</option>
-            <option value="gooseEye4">Goose-Eye (4-shaft)</option>
-            <option value="waffle4">Waffle Weave (4-shaft)</option>
-          </optgroup>
+        <optgroup label="Point &amp; Fancy Twills">
+          <option value="pointTwill4">Point Twill (4-shaft)</option>
+          <option value="extendedPointTwill4">Extended Point Twill (4-shaft)</option>
+          <option value="brokenTwill4">Broken Twill (4-shaft)</option>
+          <option value="brokenDiamond4">Broken Diamond Twill (4-shaft)</option>
+          <option value="herringbone4">Herringbone (4-shaft)</option>
+          <option value="birdsEye4">Bird’s-Eye (4-shaft)</option>
+          <option value="gooseEye4">Goose-Eye (4-shaft)</option>
+          <option value="waffle4">Waffle Weave (4-shaft)</option>
+        </optgroup>
 
-          <optgroup label="Rosepath / Scandinavian Twill-based">
-            <option value="rosepath4">Rosepath (4-shaft)</option>
-            <option value="msos4">M’s &amp; O’s (4-shaft)</option>
-            <option value="krokbragd3on4">Krokbragd (3-shaft on 4)</option>
-          </optgroup>
+        <optgroup label="Rosepath / Scandinavian Twill-based">
+          <option value="rosepath4">Rosepath (4-shaft)</option>
+          <option value="msos4">M’s &amp; O’s (4-shaft)</option>
+          <option value="krokbragd3on4">Krokbragd (3-shaft on 4)</option>
+        </optgroup>
 
-          <optgroup label="Block / Tied Weaves (Coverlet / Dräll)">
-            <option value="monksBelt4">Monk’s Belt / Munkabälte (4-shaft)</option>
-            <option value="halvDrall4">Halvdräll (4-shaft)</option>
-            <option value="summerWinter4">Summer &amp; Winter (4-shaft)</option>
-            <option value="crackle4">Crackle Weave (4-shaft)</option>
-          </optgroup>
+        <optgroup label="Block / Tied Weaves (Coverlet / Dräll)">
+          <option value="monksBelt4">Monk’s Belt / Munkabälte (4-shaft)</option>
+          <option value="halvDrall4">Halvdräll (4-shaft)</option>
+          <option value="summerWinter4">Summer &amp; Winter (4-shaft)</option>
+          <option value="crackle4">Crackle Weave (4-shaft)</option>
+        </optgroup>
 
-          <optgroup label="Lace / Spot Weaves">
-            <option value="huckSpot4">Huck (spot, 4-shaft)</option>
-            <option value="huckLace4">Huck Lace (4-shaft)</option>
-            <option value="swedishLace4">Swedish Lace (4-shaft)</option>
-          </optgroup>
+        <optgroup label="Lace / Spot Weaves">
+          <option value="huckSpot4">Huck (spot, 4-shaft)</option>
+          <option value="huckLace4">Huck Lace (4-shaft)</option>
+          <option value="swedishLace4">Swedish Lace (4-shaft)</option>
+        </optgroup>
 
-          <optgroup label="Color-and-weave Twills">
-            <option value="shadowTwill4">Shadow Twill (4-shaft)</option>
-            <option value="houndstooth4">Houndstooth (4-shaft)</option>
-          </optgroup>
-        </select>
+        <optgroup label="Color-and-weave Twills">
+          <option value="shadowTwill4">Shadow Twill (4-shaft)</option>
+          <option value="houndstooth4">Houndstooth (4-shaft)</option>
+        </optgroup>
+      </select>
+    </div>
 
-      </div>
+    <!-- NEW: Color layout selector -->
+    <div class="control-unit">
+      <label for="layout">Color layout</label>
+      <select id="layout">
+        <option value="auto">Auto (follow pattern)</option>
+        <option value="stripes">Stripes (A/B)</option>
+        <option value="logCabin">Log Cabin (AABB)</option>
+        <option value="houndstooth">Houndstooth (4×4)</option>
+      </select>
+    </div>
 
-      <div class="control-unit">
-        <label for="warpCount">Warp ends</label>
-        <input id="warpCount" type="number" min="4" max="48" value="25" />
-      </div>
+    <div class="control-unit">
+      <label for="warpCount">Warp ends</label>
+      <input id="warpCount" type="number" min="4" max="48" value="25" />
+    </div>
 
-      <div class="control-unit">
-        <label for="weftCount">Weft picks</label>
-        <input id="weftCount" type="number" min="4" max="48" value="25" />
-      </div>
+    <div class="control-unit">
+      <label for="weftCount">Weft picks</label>
+      <input id="weftCount" type="number" min="4" max="48" value="25" />
+    </div>
 
-      <div class="control-unit">
-        <label for="cellSize">Cell size (px)</label>
-        <input id="cellSize" type="number" min="10" max="60" value="32" />
-      </div>
+    <div class="control-unit">
+      <label for="cellSize">Cell size (px)</label>
+      <input id="cellSize" type="number" min="10" max="60" value="32" />
+    </div>
 
-      <!-- ROW 2: four blocks, like the original -->
-      <div class="control-unit control-unit--colors">
-        <label>Warp colors</label>
-        <div class="color-row">
-          <input id="warpA" type="color" />
-          <input id="warpB" type="color" />
-        </div>
-      </div>
-
-      <div class="control-unit control-unit--colors">
-        <label>Weft colors</label>
-        <div class="color-row">
-          <input id="weftA" type="color" />
-          <input id="weftB" type="color" />
-        </div>
-      </div>
-
-      <div class="control-unit control-unit--btn">
-        <button id="applyAB" class="btn">Apply colors</button>
-        <button id="randomize" class="btn">Randomize Colors</button>
-      </div>
-
-      <div class="control-unit control-unit--btn">
-        <button id="save" class="btn">Save Pattern</button>
-        <label class="btn file">
-          Load Pattern
-          <input id="load" type="file" accept="application/json" />
-        </label>
+    <!-- ROW 2: color + buttons -->
+    <div class="control-unit control-unit--colors">
+      <label>Warp colors</label>
+      <div class="color-row">
+        <input id="warpA" type="color" />
+        <input id="warpB" type="color" />
       </div>
     </div>
-  </section>
+
+    <div class="control-unit control-unit--colors">
+      <label>Weft colors</label>
+      <div class="color-row">
+        <input id="weftA" type="color" />
+        <input id="weftB" type="color" />
+      </div>
+    </div>
+
+    <div class="control-unit control-unit--btn">
+      <button id="applyAB" class="btn">Apply colors</button>
+      <button id="randomize" class="btn">Randomize Colors</button>
+    </div>
+
+    <div class="control-unit control-unit--btn">
+      <button id="save" class="btn">Save Pattern</button>
+      <label class="btn file">
+        Load Pattern
+        <input id="load" type="file" accept="application/json" />
+      </label>
+    </div>
+  </div>
+</section>
 
 
 
@@ -168,6 +178,7 @@
 
   <footer class="footer">Built to Explore 4-shaft Weaving patterns</footer>
 
+  <script src="presets.js"></script>
   <script src="weave.js"></script>
   <script src="app.js"></script>
 </body>
