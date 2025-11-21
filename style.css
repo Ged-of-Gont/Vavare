@@ -1,9 +1,9 @@
 :root {
   /* Core palette */
-  --bg: #160216;
+  --bg: #032a19;
   --panel: #c7f5b3;
   --fg: #ff21b9;
-  --line: #4ebb00;
+  --line: #4aa409;
   --accent: #ffea00;
 
   /* Yarn defaults used by JS */
@@ -12,7 +12,7 @@
   --weft-a: #eeb218;
   --weft-b: #c5730e;
 
-  --app-max-width: clamp(350px, 80vw, 1000px);
+  --app-max-width: clamp(350px, 75vw, 1000px);
   --ui-font: 'Share Tech Mono', system-ui, monospace;
 }
 
@@ -50,6 +50,16 @@ body {
   margin-bottom: 12px;
 }
 
+.site-logo {
+  margin-left: 20px;
+  margin-right: 20px;
+  display: block;
+  max-width: 100%;
+  height: auto;
+  fill: var(--panel);
+}
+
+
 .brand {
   margin: 0 0 4px;
   font-size: clamp(28px, 4vw, 40px);
@@ -60,16 +70,15 @@ body {
 }
 
 .tagline {
-  margin: 0;
-  color: var(--fg);
-  font-size: 0.9rem;
+  margin-top: 10px;
+  margin-bottom: 20;
+  color: var(--line);
+  font-size: 1.3rem;
 }
 
 /* GENERIC ROW CONTAINER */
 .card {
-  width: 100%;
   max-width: var(--app-max-width);
-  margin: 0 auto 8px auto;
   background: var(--bg);
 }
 
@@ -78,7 +87,7 @@ body {
 /* 4 equal columns; rows auto-fill, all full-width */
 .controls .controls-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px 16px;
 }
 
@@ -149,6 +158,7 @@ textarea {
 .control-unit--colors input[type="color"]::-webkit-color-swatch-wrapper {
   padding: 0;
 }
+
 .control-unit--colors input[type="color"]::-webkit-color-swatch {
   border: none;
 }
@@ -185,7 +195,7 @@ textarea {
   transform: translateY(1px);
   color: var(--fg);
   background: var(--bg);
-  
+
 }
 
 .btn.file {
@@ -206,6 +216,7 @@ textarea {
   max-width: var(--app-max-width);
   overflow-x: auto;
   padding-top: 1rem;
+  margin-top: 35px;
 }
 
 /* assembly = whole machine (bars + canvas + right controls + tie-up) */
@@ -227,25 +238,48 @@ textarea {
   gap: 10px;
 }
 
-.spacer { grid-area: spacer; }
-.spacer2 { grid-area: spacer2; }
-#warpBar { grid-area: warpBar; }
-#threading { grid-area: threading; }
-#weftBar { grid-area: weftBar; }
-#treadling { grid-area: treadling; }
-#weave { grid-area: canvas; }
+.spacer {
+  grid-area: spacer;
+}
+
+.spacer2 {
+  grid-area: spacer2;
+}
+
+#warpBar {
+  grid-area: warpBar;
+}
+
+#threading {
+  grid-area: threading;
+}
+
+#weftBar {
+  grid-area: weftBar;
+}
+
+#treadling {
+  grid-area: treadling;
+}
+
+#weave {
+  grid-area: canvas;
+}
 
 /* COLOR BARS (top + left hex buttons) */
 .bar {
   display: grid;
   gap: 0;
 }
+
 .bar.warp {
   grid-template-columns: repeat(var(--warp), var(--cs));
 }
+
 .bar.weft {
   grid-template-rows: repeat(var(--weft), var(--cs));
 }
+
 .bar .cell {
   width: var(--cs);
   height: var(--cs);
@@ -261,18 +295,18 @@ textarea {
   border: none;
   background: transparent;
   cursor: pointer;
-  clip-path: polygon(
-    25% 0%,
-    75% 0%,
-    100% 50%,
-    75% 100%,
-    25% 100%,
-    0% 50%
-  );
+  clip-path: polygon(25% 0%,
+      75% 0%,
+      100% 50%,
+      75% 100%,
+      25% 100%,
+      0% 50%);
 }
+
 .bar .cell input[type="color"]::-webkit-color-swatch-wrapper {
   padding: 0;
 }
+
 .bar .cell input[type="color"]::-webkit-color-swatch {
   border: none;
 }
@@ -283,11 +317,15 @@ textarea {
   grid-template-columns: repeat(var(--warp), var(--cs));
   height: var(--th);
   align-items: center;
+  margin-bottom: 10px;
+  
 }
+
 .draft.treadling {
   display: grid;
   grid-template-rows: repeat(var(--weft), var(--cs));
   align-items: center;
+  margin-left: 10px;
 }
 
 /* Threading / treadling buttons */
@@ -390,14 +428,17 @@ label.btn {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  line-height: 1; /* keeps vertical centering consistent */
+  line-height: 1;
+  /* keeps vertical centering consistent */
 }
 
 
 /* Chrome / Edge / Safari, etc. */
 input[type="number"]::selection {
-  background: var(--accent); /* or any bright color */
-  color: #000;               /* text color while selected */
+  background: var(--accent);
+  /* or any bright color */
+  color: #000;
+  /* text color while selected */
 }
 
 /* Firefox */
